@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -59,9 +60,10 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
   padding: 12px; margin-bottom: 8px; position: relative;
   border: 1.5px solid transparent; transition: border-color 0.15s, background 0.15s;
 }
-.horse-card.st-win  { border-color: var(--win);  background: #f0faf5; }
-.horse-card.st-place{ border-color: var(--place); background: #f0f6ff; }
-.horse-card.st-lose { border-color: #ddd; opacity: 0.65; }
+.horse-card.st-win   { border-color: #b8860b; background: #fdf8e6; }
+.horse-card.st-2nd  { border-color: var(--place); background: #f0f6ff; }
+.horse-card.st-3rd  { border-color: #2d6a4f; background: #f0faf5; }
+.horse-card.st-lose { border-color: #ccc; opacity: 0.65; }
 
 /* row layout inside horse card */
 .horse-main { display: grid; grid-template-columns: 110px 1fr 36px; gap: 8px; align-items: center; margin-bottom: 8px; }
@@ -71,18 +73,20 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
   display: none; position: absolute; top: 8px; right: 44px;
   padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 700;
 }
-.horse-card.st-win  .hit-badge { display: inline-block; background: var(--win-bg);   color: var(--win);   }
-.horse-card.st-place.hit-badge { display: inline-block; }
-.horse-card.st-place .hit-badge { display: inline-block; background: var(--place-bg); color: var(--place); }
-.horse-card.st-lose .hit-badge { display: inline-block; background: var(--lose-bg);  color: var(--lose);  }
+.horse-card.st-win  .hit-badge { display: inline-block; background: #fef3c7; color: #92600a; }
+.horse-card.st-2nd  .hit-badge { display: inline-block; background: var(--place-bg); color: var(--place); }
+.horse-card.st-3rd  .hit-badge { display: inline-block; background: var(--win-bg); color: var(--win); }
+.horse-card.st-lose .hit-badge { display: inline-block; background: #f0f0f0; color: #999; }
 
 .remove-btn { background: none; border: none; font-size: 22px; color: #ccc; cursor: pointer; padding: 0; line-height: 1; touch-action: manipulation; }
 .remove-btn:active { color: var(--lose); }
 
 /* Rank input highlight */
 .rank-inp { text-align: center; font-weight: 700; }
-.rank-inp.rank-1 { border-color: var(--win) !important; background: var(--win-bg) !important; color: var(--win) !important; }
-.rank-inp.rank-23 { border-color: var(--place) !important; background: var(--place-bg) !important; color: var(--place) !important; }
+.rank-inp.rank-1 { border-color: #b8860b !important; background: #fef3c7 !important; color: #92600a !important; }
+.rank-inp.rank-2 { border-color: var(--place) !important; background: var(--place-bg) !important; color: var(--place) !important; }
+.rank-inp.rank-3 { border-color: var(--win) !important; background: var(--win-bg) !important; color: var(--win) !important; }
+.rank-inp.rank-out { border-color: #ccc !important; background: #f5f5f5 !important; color: #999 !important; }
 
 /* Buttons */
 .btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 20px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer; touch-action: manipulation; transition: all 0.15s; }
@@ -115,9 +119,10 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 .oshi-ren { background: #fdf8d6; color: #7a6800; }
 .oshi-ana { background: #fde8f5; color: #8a1a6a; }
 .hit-chip { padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
-.chip-win   { background: var(--win-bg);   color: var(--win);   }
-.chip-place { background: var(--place-bg); color: var(--place); }
-.chip-lose  { background: var(--lose-bg);  color: var(--lose);  }
+.chip-1st   { background: #fef3c7; color: #92600a; }
+.chip-2nd   { background: var(--place-bg); color: var(--place); }
+.chip-3rd   { background: var(--win-bg);   color: var(--win);   }
+.chip-lose  { background: #f0f0f0; color: #999; }
 .hist-summary { font-size: 12px; color: var(--muted); background: var(--surface2); border-radius: 6px; padding: 6px 10px; }
 .no-result { font-size: 12px; color: var(--hint); }
 
@@ -334,26 +339,31 @@ function judgeCard(card) {
   const badge = card.querySelector('.hit-badge');
 
   // Rank input coloring
-  rankInp.classList.remove('rank-1', 'rank-23');
-  if (rank === 1) rankInp.classList.add('rank-1');
-  else if (rank === 2 || rank === 3) rankInp.classList.add('rank-23');
+  rankInp.classList.remove('rank-1', 'rank-2', 'rank-3', 'rank-out');
+  if      (rank === 1)                   rankInp.classList.add('rank-1');
+  else if (rank === 2)                   rankInp.classList.add('rank-2');
+  else if (rank === 3)                   rankInp.classList.add('rank-3');
+  else if (rankInp.value)                rankInp.classList.add('rank-out');
 
   // Card state
-  card.classList.remove('st-win', 'st-place', 'st-lose');
+  card.classList.remove('st-win', 'st-2nd', 'st-3rd', 'st-lose');
   badge.textContent = '';
 
-  if (!rankInp.value) return; // no rank entered yet, no judgment
+  if (!rankInp.value) return;
 
   if (rank === 1) {
     card.classList.add('st-win');
     const odds = parseFloat(card.querySelector('.horse-odds').value) || 0;
-    badge.textContent = '1着 ✓' + (odds ? '  ＋' + Math.round(odds * 100) + '円' : '');
-  } else if (rank === 2 || rank === 3) {
-    card.classList.add('st-place');
-    badge.textContent = rank + '着 △';
+    badge.textContent = '1着 🥇' + (odds ? '  ＋' + Math.round(odds * 100) + '円' : '');
+  } else if (rank === 2) {
+    card.classList.add('st-2nd');
+    badge.textContent = '2着 🥈';
+  } else if (rank === 3) {
+    card.classList.add('st-3rd');
+    badge.textContent = '3着 🥉';
   } else {
     card.classList.add('st-lose');
-    badge.textContent = rank + '着 ×';
+    badge.textContent = rank + '着';
   }
 }
 
@@ -416,9 +426,10 @@ function renderHistory() {
       const rank = parseInt(h.rank);
       let chipClass = '', chipTxt = '';
       if (h.rank) {
-        if (rank === 1)            { chipClass = 'chip-win';   chipTxt = '1着'; }
-        else if (rank <= 3)        { chipClass = 'chip-place'; chipTxt = rank+'着'; }
-        else                       { chipClass = 'chip-lose';  chipTxt = rank+'着'; }
+        if (rank === 1)      { chipClass = 'chip-1st';  chipTxt = '1着'; }
+        else if (rank === 2) { chipClass = 'chip-2nd';  chipTxt = '2着'; }
+        else if (rank === 3) { chipClass = 'chip-3rd';  chipTxt = '3着'; }
+        else                 { chipClass = 'chip-lose'; chipTxt = rank+'着'; }
       }
       const pay = (rank === 1 && h.odds) ? '+' + Math.round(parseFloat(h.odds)*100) + '円' : '';
       return `<div class="hist-horse">
