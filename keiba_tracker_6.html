@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>競馬予想トラッカー</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --surface2: #f0ede6;
+  --border: #e0dbd0;
+  --text: #1a1713;
+  --muted: #6b6560;
+  --hint: #9e9890;
+  --accent: #c8a84b;
+  --win: #2d6a4f;
+  --win-bg: #d8f3e8;
+  --place: #1a4f8a;
+  --place-bg: #dceeff;
+  --lose: #8a1a1a;
+  --lose-bg: #fde8e8;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5; min-height: 100vh; }
+
+.header { background: var(--text); color: white; padding: 14px 16px 12px; position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.05em; }
+.header p { font-size: 11px; color: #aaa; margin-top: 1px; }
+
+.nav { display: flex; background: var(--text); padding: 0 16px 12px; gap: 8px; }
+.nav-btn { flex: 1; padding: 10px 0; border-radius: var(--radius-sm); border: none; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+.nav-btn.active { background: var(--accent); color: var(--text); }
+.nav-btn:not(.active) { background: #2a2520; color: #888; }
+
+.content { padding: 16px; max-width: 640px; margin: 0 auto; }
+.section { display: none; }
+.section.active { display: block; }
+
+.card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; margin-bottom: 12px; }
+.card-title { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; }
+
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 12px; color: var(--muted); font-weight: 500; }
+.inp {
+  padding: 11px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-family: inherit; font-size: 16px; color: var(--text); background: var(--surface);
+  width: 100%; -webkit-appearance: none; transition: border-color 0.15s;
+}
+.inp:focus { outline: none; border-color: var(--accent); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* Horse card */
+.horse-card {
+  background: var(--surface2); border-radius: var(--radius-sm);
+  padding: 12px; margin-bottom: 8px; position: relative;
+  border: 1.5px solid transparent; transition: border-color 0.15s, background 0.15s;
+}
+.horse-card.st-win  { border-color: var(--win);  background: #f0faf5; }
+.horse-card.st-place{ border-color: var(--place); background: #f0f6ff; }
+.horse-card.st-lose { border-color: #ddd; opacity: 0.65; }
+
+/* row layout inside horse card */
+.horse-main { display: grid; grid-template-columns: 110px 1fr 36px; gap: 8px; align-items: center; margin-bottom: 8px; }
+.horse-sub  { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
+
+.hit-badge {
+  display: none; position: absolute; top: 8px; right: 44px;
+  padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 700;
+}
+.horse-card.st-win  .hit-badge { display: inline-block; background: var(--win-bg);   color: var(--win);   }
+.horse-card.st-place.hit-badge { display: inline-block; }
+.horse-card.st-place .hit-badge { display: inline-block; background: var(--place-bg); color: var(--place); }
+.horse-card.st-lose .hit-badge { display: inline-block; background: var(--lose-bg);  color: var(--lose);  }
+
+.remove-btn { background: none; border: none; font-size: 22px; color: #ccc; cursor: pointer; padding: 0; line-height: 1; touch-action: manipulation; }
+.remove-btn:active { color: var(--lose); }
+
+/* Rank input highlight */
+.rank-inp { text-align: center; font-weight: 700; }
+.rank-inp.rank-1 { border-color: var(--win) !important; background: var(--win-bg) !important; color: var(--win) !important; }
+.rank-inp.rank-23 { border-color: var(--place) !important; background: var(--place-bg) !important; color: var(--place) !important; }
+
+/* Buttons */
+.btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px 20px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer; touch-action: manipulation; transition: all 0.15s; }
+.btn-primary { background: var(--text); color: white; border-color: var(--text); }
+.btn-secondary { background: var(--surface); color: var(--text); }
+.btn-danger { color: var(--lose); border-color: #fdd; background: var(--surface); }
+.btn-small { padding: 8px 14px; font-size: 13px; }
+.btn-add { background: var(--surface2); border: 1.5px dashed var(--border); color: var(--muted); width: 100%; margin-top: 4px; }
+.btn-row { display: flex; gap: 10px; margin-top: 4px; }
+.btn-row .btn-primary { flex: 1; }
+
+.msg { font-size: 13px; color: var(--muted); padding: 6px 0; min-height: 24px; }
+.msg.success { color: var(--win); }
+.msg.error { color: var(--lose); }
+
+/* History */
+.hist-item { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 14px 14px 10px; margin-bottom: 10px; }
+.hist-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.hist-race { font-size: 15px; font-weight: 700; }
+.hist-meta { font-size: 11px; color: var(--hint); margin-top: 2px; }
+.hist-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: 8px; }
+.hist-horses { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
+.hist-horse { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.hist-horse .odds-txt { font-size: 12px; color: var(--hint); }
+.hist-horse .rank-txt { font-size: 12px; color: var(--hint); margin-left: auto; margin-right: 4px; }
+.oshi-chip { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.oshi-hon { background: #dbe8ff; color: #1a4f8a; }
+.oshi-tai { background: #ffe8d6; color: #8a4a00; }
+.oshi-tan { background: #dffde8; color: #1a6b3a; }
+.oshi-ren { background: #fdf8d6; color: #7a6800; }
+.oshi-ana { background: #fde8f5; color: #8a1a6a; }
+.hit-chip { padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.chip-win   { background: var(--win-bg);   color: var(--win);   }
+.chip-place { background: var(--place-bg); color: var(--place); }
+.chip-lose  { background: var(--lose-bg);  color: var(--lose);  }
+.hist-summary { font-size: 12px; color: var(--muted); background: var(--surface2); border-radius: 6px; padding: 6px 10px; }
+.no-result { font-size: 12px; color: var(--hint); }
+
+/* Stats */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.stat-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 14px; }
+.stat-card .lbl { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px; }
+.stat-card .val { font-size: 26px; font-weight: 700; color: var(--text); }
+.stat-card .sub { font-size: 11px; color: var(--hint); margin-top: 2px; }
+.oshi-stat-list { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; margin-bottom: 14px; }
+.oshi-stat-row { display: flex; align-items: center; gap: 12px; padding: 14px; border-bottom: 1px solid var(--border); }
+.oshi-stat-row:last-child { border-bottom: none; }
+.oshi-stat-info { flex: 1; }
+.oshi-stat-name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.oshi-stat-sub { font-size: 12px; color: var(--hint); }
+.oshi-roi { text-align: right; }
+.oshi-roi .roi-val { font-size: 22px; font-weight: 700; }
+.oshi-roi .roi-lbl { font-size: 11px; color: var(--hint); }
+.roi-good { color: #c0392b; }
+.roi-mid  { color: #8a6c00; }
+.roi-bad  { color: #1a4f8a; }
+.roi-none { color: var(--hint); }
+.empty-state { text-align: center; padding: 40px 20px; color: var(--hint); font-size: 14px; }
+
+/* Stats section headers */
+.stat-section-title { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin: 18px 0 8px; }
+
+/* Grouped oshi table: used by both lowodds and course sections */
+.group-block { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; margin-bottom: 14px; }
+.group-header { background: var(--surface2); padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+.group-header-name { font-size: 14px; font-weight: 700; }
+.group-header-roi { font-size: 16px; font-weight: 700; }
+.group-header-sub { font-size: 11px; color: var(--hint); margin-top: 1px; text-align: right; }
+.group-oshi-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.group-oshi-row:last-child { border-bottom: none; }
+.group-oshi-info { flex: 1; font-size: 12px; color: var(--hint); }
+.group-oshi-roi { text-align: right; font-size: 15px; font-weight: 700; min-width: 52px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏇 競馬予想トラッカー</h1>
+  <p>AI予想の印別 的中率・回収率を集計</p>
+</div>
+<div class="nav">
+  <button class="nav-btn active" onclick="showTab('input',this)">予想入力</button>
+  <button class="nav-btn" onclick="showTab('history',this)">履歴</button>
+  <button class="nav-btn" onclick="showTab('stats',this)">集計</button>
+</div>
+
+<div class="content">
+
+  <!-- INPUT TAB -->
+  <div id="tab-input" class="section active">
+
+    <div id="edit-banner" style="display:none;background:#fff8e6;border:1px solid #e8d090;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
+      ✏️ 編集中: <span id="edit-race-name"></span>
+    </div>
+
+    <div class="card">
+      <div class="card-title">レース情報</div>
+      <div class="grid2" style="margin-bottom:10px">
+        <div class="field"><label>日付</label><input type="date" id="f-date" class="inp"></div>
+        <div class="field"><label>競馬場</label>
+          <select id="f-course" class="inp">
+            <option value="">選択</option>
+            <optgroup label="中央">
+              <option value="札幌">札幌</option>
+              <option value="函館">函館</option>
+              <option value="福島">福島</option>
+              <option value="新潟">新潟</option>
+              <option value="東京">東京</option>
+              <option value="中山">中山</option>
+              <option value="中京">中京</option>
+              <option value="京都">京都</option>
+              <option value="阪神">阪神</option>
+              <option value="小倉">小倉</option>
+            </optgroup>
+            <optgroup label="その他">
+              <option value="地方">地方</option>
+              <option value="海外">海外</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+      <div class="grid2" style="margin-bottom:10px">
+        <div class="field"><label>レース番号</label>
+          <select id="f-rno" class="inp">
+            <option value="">選択</option>
+            <option value="1R">1R</option>
+            <option value="2R">2R</option>
+            <option value="3R">3R</option>
+            <option value="4R">4R</option>
+            <option value="5R">5R</option>
+            <option value="6R">6R</option>
+            <option value="7R">7R</option>
+            <option value="8R">8R</option>
+            <option value="9R">9R</option>
+            <option value="10R">10R</option>
+            <option value="11R">11R</option>
+            <option value="12R">12R</option>
+          </select>
+        </div>
+        <div class="field"><label>レース名</label><input type="text" id="f-race" placeholder="スプリングS G2" class="inp"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        印・馬情報
+        <span style="font-size:11px;color:var(--hint);text-transform:none;letter-spacing:0;font-weight:400"> — 着順入力で自動判定</span>
+      </div>
+      <div id="horse-list"></div>
+      <button class="btn btn-add" onclick="addHorse()">＋ 馬を追加</button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="saveRecord()">💾 保存する</button>
+      <button class="btn btn-secondary" onclick="clearForm()">クリア</button>
+    </div>
+    <div class="msg" id="save-msg"></div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div id="tab-history" class="section">
+    <div id="hist-list"></div>
+  </div>
+
+  <!-- STATS TAB -->
+  <div id="tab-stats" class="section">
+    <div class="stat-grid" id="stat-summary"></div>
+
+    <div class="stat-section-title">印別 集計</div>
+    <div class="oshi-stat-list" id="oshi-stat-list"></div>
+
+    <div class="stat-section-title">オッズ10倍以下 限定集計（印別）</div>
+    <div id="lowodds-list"></div>
+
+    <div class="stat-section-title">競馬場別 単勝回収率（印別）</div>
+    <div id="course-stat-list"></div>
+  </div>
+
+</div>
+
+<script>
+const OSHI = [
+  { s:'◎', l:'◎ 本命', cls:'oshi-hon', color:'#1a4f8a' },
+  { s:'○', l:'○ 対抗', cls:'oshi-tai', color:'#8a4a00' },
+  { s:'▲', l:'▲ 単穴', cls:'oshi-tan', color:'#1a6b3a' },
+  { s:'△', l:'△ 連下', cls:'oshi-ren', color:'#7a6800' },
+  { s:'☆', l:'☆ 穴',  cls:'oshi-ana', color:'#8a1a6a' },
+];
+
+let recs = [];
+let editId = null;
+
+try { recs = JSON.parse(localStorage.getItem('kb5') || '[]'); } catch(e) {}
+function persist() { try { localStorage.setItem('kb5', JSON.stringify(recs)); } catch(e) {} }
+
+window.onload = function() {
+  document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+  OSHI.forEach(o => addHorse(o.s));
+};
+
+function showTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'history') renderHistory();
+  if (id === 'stats') renderStats();
+}
+
+// ---- HORSE CARD ----
+function addHorse(defaultOshi, data) {
+  data = data || {};
+  const wrap = document.getElementById('horse-list');
+  const div = document.createElement('div');
+  div.className = 'horse-card';
+  div.innerHTML = `
+    <span class="hit-badge"></span>
+    <div class="horse-main">
+      <select class="oshi-select inp" style="font-weight:700;font-size:15px;padding:11px 8px"
+              onchange="judgeCard(this.closest('.horse-card'))">
+        ${OSHI.map(o => `<option value="${o.s}"${(data.oshi||defaultOshi)===o.s?' selected':''}>${o.l}</option>`).join('')}
+      </select>
+      <input type="text" placeholder="馬名" class="horse-name inp"
+             value="${data.name||''}" oninput="judgeCard(this.closest('.horse-card'))">
+      <button class="remove-btn" onclick="this.closest('.horse-card').remove()">×</button>
+    </div>
+    <div class="horse-sub">
+      <div class="field">
+        <label>オッズ（倍）</label>
+        <input type="text" placeholder="2.1"
+               class="horse-odds inp" value="${data.odds||''}"
+               oninput="judgeCard(this.closest('.horse-card'))">
+      </div>
+      <div class="field">
+        <label>着順</label>
+        <input type="text" placeholder="—"
+               class="horse-rank inp rank-inp" value="${data.rank||''}"
+               oninput="judgeCard(this.closest('.horse-card'))">
+      </div>
+    </div>`;
+  wrap.appendChild(div);
+  // apply saved rank color if editing
+  if (data.rank) judgeCard(div);
+}
+
+function judgeCard(card) {
+  const rankInp = card.querySelector('.horse-rank');
+  const rank = parseInt(rankInp.value);
+  const badge = card.querySelector('.hit-badge');
+
+  // Rank input coloring
+  rankInp.classList.remove('rank-1', 'rank-23');
+  if (rank === 1) rankInp.classList.add('rank-1');
+  else if (rank === 2 || rank === 3) rankInp.classList.add('rank-23');
+
+  // Card state
+  card.classList.remove('st-win', 'st-place', 'st-lose');
+  badge.textContent = '';
+
+  if (!rankInp.value) return; // no rank entered yet, no judgment
+
+  if (rank === 1) {
+    card.classList.add('st-win');
+    const odds = parseFloat(card.querySelector('.horse-odds').value) || 0;
+    badge.textContent = '1着 ✓' + (odds ? '  ＋' + Math.round(odds * 100) + '円' : '');
+  } else if (rank === 2 || rank === 3) {
+    card.classList.add('st-place');
+    badge.textContent = rank + '着 △';
+  } else {
+    card.classList.add('st-lose');
+    badge.textContent = rank + '着 ×';
+  }
+}
+
+function getHorses() {
+  return Array.from(document.querySelectorAll('.horse-card')).map(card => ({
+    oshi:  card.querySelector('.oshi-select').value,
+    name:  card.querySelector('.horse-name').value.trim(),
+    odds:  card.querySelector('.horse-odds').value,
+    rank:  card.querySelector('.horse-rank').value,
+  })).filter(h => h.name);
+}
+
+// ---- SAVE ----
+function saveRecord() {
+  const race = document.getElementById('f-race').value.trim();
+  if (!race) { showMsg('レース名を入力してください', 'error'); return; }
+  const horses = getHorses();
+  if (!horses.length) { showMsg('馬情報を入力してください', 'error'); return; }
+  const rec = {
+    id: editId || Date.now(),
+    date: document.getElementById('f-date').value,
+    course: document.getElementById('f-course').value,
+    rno: document.getElementById('f-rno').value,
+    race,
+    horses,
+  };
+  if (editId) { recs = recs.map(r => r.id === editId ? rec : r); }
+  else { recs.unshift(rec); }
+  persist();
+  editId = null;
+  document.getElementById('edit-banner').style.display = 'none';
+  showMsg('✓ 保存しました（' + race + '）', 'success');
+}
+
+function clearForm() {
+  document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('f-course').value = '';
+  document.getElementById('f-rno').value = '';
+  document.getElementById('f-race').value = '';
+  document.getElementById('horse-list').innerHTML = '';
+  OSHI.forEach(o => addHorse(o.s));
+  document.getElementById('edit-banner').style.display = 'none';
+  editId = null;
+  showMsg('');
+}
+
+function showMsg(txt, type) {
+  const el = document.getElementById('save-msg');
+  el.textContent = txt;
+  el.className = 'msg' + (type ? ' '+type : '');
+}
+
+// ---- HISTORY ----
+function renderHistory() {
+  const el = document.getElementById('hist-list');
+  if (!recs.length) { el.innerHTML = '<div class="empty-state">まだデータがありません</div>'; return; }
+  el.innerHTML = recs.map(r => {
+    const horsesHtml = (r.horses||[]).map(h => {
+      const o = OSHI.find(x => x.s === h.oshi) || OSHI[0];
+      const rank = parseInt(h.rank);
+      let chipClass = '', chipTxt = '';
+      if (h.rank) {
+        if (rank === 1)            { chipClass = 'chip-win';   chipTxt = '1着'; }
+        else if (rank <= 3)        { chipClass = 'chip-place'; chipTxt = rank+'着'; }
+        else                       { chipClass = 'chip-lose';  chipTxt = rank+'着'; }
+      }
+      const pay = (rank === 1 && h.odds) ? '+' + Math.round(parseFloat(h.odds)*100) + '円' : '';
+      return `<div class="hist-horse">
+        <span class="oshi-chip ${o.cls}">${h.oshi}</span>
+        <span>${h.name}</span>
+        ${h.odds ? `<span class="odds-txt">${h.odds}倍</span>` : ''}
+        <span class="rank-txt" style="margin-left:auto"></span>
+        ${chipClass ? `<span class="hit-chip ${chipClass}">${chipTxt}</span>` : ''}
+        ${pay ? `<span style="font-size:12px;color:var(--win);font-weight:700;margin-left:4px">${pay}</span>` : ''}
+      </div>`;
+    }).join('');
+
+    const hasResult = (r.horses||[]).some(h => h.rank);
+    const winHorse = (r.horses||[]).find(h => parseInt(h.rank)===1);
+    const summaryTxt = hasResult
+      ? (winHorse
+          ? `1着: ${winHorse.name}${winHorse.odds ? '（'+winHorse.odds+'倍）' : ''}`
+          : '結果入力あり（1着なし）')
+      : null;
+
+    return `<div class="hist-item">
+      <div class="hist-head">
+        <div>
+          <div class="hist-race">${r.race}</div>
+          <div class="hist-meta">${[r.date, r.course, r.rno].filter(Boolean).join(' ')}</div>
+        </div>
+        <div class="hist-actions">
+          <button class="btn btn-secondary btn-small" onclick="editRec(${r.id})">編集</button>
+          <button class="btn btn-danger btn-small" onclick="deleteRec(${r.id})">削除</button>
+        </div>
+      </div>
+      <div class="hist-horses">${horsesHtml}</div>
+      ${summaryTxt
+        ? `<div class="hist-summary">${summaryTxt}</div>`
+        : `<div class="no-result">着順未入力</div>`}
+    </div>`;
+  }).join('');
+}
+
+function editRec(id) {
+  const r = recs.find(x => x.id === id);
+  if (!r) return;
+  editId = id;
+  document.getElementById('f-date').value = r.date || '';
+  document.getElementById('f-course').value = r.course || '';
+  document.getElementById('f-rno').value = r.rno || '';
+  document.getElementById('f-race').value = r.race || '';
+  document.getElementById('horse-list').innerHTML = '';
+  (r.horses||[]).forEach(h => addHorse(h.oshi, h));
+  document.getElementById('edit-banner').style.display = 'block';
+  document.getElementById('edit-race-name').textContent = r.race;
+  // switch to input tab
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-input').classList.add('active');
+  document.querySelectorAll('.nav-btn')[0].classList.add('active');
+  showMsg('編集中: ' + r.race);
+  window.scrollTo(0,0);
+}
+
+function deleteRec(id) {
+  if (!confirm('削除しますか？')) return;
+  recs = recs.filter(r => r.id !== id);
+  persist();
+  renderHistory();
+}
+
+// ---- STATS ----
+function calcSt(filter) {
+  const st = {};
+  OSHI.forEach(o => { st[o.s] = { n:0, hit3:0, win:0, tanPay:0 }; });
+  recs.forEach(r => {
+    (r.horses||[]).forEach(h => {
+      if (!h.rank) return;
+      if (filter && !filter(h, r)) return;
+      const s = st[h.oshi]; if (!s) return;
+      const rank = parseInt(h.rank);
+      s.n++;
+      if (rank <= 3) s.hit3++;
+      if (rank === 1) { s.win++; s.tanPay += Math.round((parseFloat(h.odds)||0) * 100); }
+    });
+  });
+  return st;
+}
+
+function roiColor(roi) {
+  return roi === null ? 'roi-none' : roi >= 100 ? 'roi-good' : roi >= 50 ? 'roi-mid' : 'roi-bad';
+}
+function roiVal(n, pay) {
+  return n > 0 ? Math.round(pay / (n * 100) * 100) : null;
+}
+
+// Build a group-block card with a header (total ROI) + per-oshi rows
+function buildGroupBlock(label, sublabel, st) {
+  const totN   = OSHI.reduce((a,o) => a+st[o.s].n, 0);
+  const totWin = OSHI.reduce((a,o) => a+st[o.s].win, 0);
+  const totPay = OSHI.reduce((a,o) => a+st[o.s].tanPay, 0);
+  const roi    = roiVal(totN, totPay);
+  const rc     = roiColor(roi);
+  const wr     = totN > 0 ? Math.round(totWin/totN*100) : 0;
+
+  const rows = OSHI.map(o => {
+    const s = st[o.s];
+    if (s.n === 0) return '';
+    const r = roiVal(s.n, s.tanPay);
+    const rc2 = roiColor(r);
+    const w = s.n > 0 ? Math.round(s.win/s.n*100) : 0;
+    return `<div class="group-oshi-row">
+      <span class="oshi-chip ${o.cls}">${o.s}</span>
+      <div class="group-oshi-info">${s.n}回　単勝${s.win}回(${w}%)</div>
+      <div class="group-oshi-roi ${rc2}">${r!==null ? r+'%' : '—'}</div>
+    </div>`;
+  }).join('');
+
+  return `<div class="group-block">
+    <div class="group-header">
+      <div>
+        <div class="group-header-name">${label}</div>
+        <div style="font-size:11px;color:var(--hint);margin-top:1px">${sublabel}　${totN}回　単勝${totWin}回(${wr}%)</div>
+      </div>
+      <div>
+        <div class="group-header-roi ${rc}">${roi!==null ? roi+'%' : '—'}</div>
+        <div class="group-header-sub">単勝回収率</div>
+      </div>
+    </div>
+    ${rows || '<div style="padding:10px 14px;font-size:12px;color:var(--hint)">データなし</div>'}
+  </div>`;
+}
+
+function renderStats() {
+  // --- Overall summary ---
+  const st = calcSt();
+  const totN   = OSHI.reduce((a,o) => a+st[o.s].n, 0);
+  const totHit = OSHI.reduce((a,o) => a+st[o.s].hit3, 0);
+  const totWin = OSHI.reduce((a,o) => a+st[o.s].win, 0);
+  const totPay = OSHI.reduce((a,o) => a+st[o.s].tanPay, 0);
+  const overallROI = roiVal(totN, totPay);
+
+  document.getElementById('stat-summary').innerHTML = [
+    ['登録レース数', recs.length,  '着順入力: '+recs.filter(r=>(r.horses||[]).some(h=>h.rank)).length+'R'],
+    ['単勝的中率',   totN>0 ? Math.round(totWin/totN*100)+'%':'—', totWin+'/'+totN+' 回'],
+    ['着内的中率',   totN>0 ? Math.round(totHit/totN*100)+'%':'—', totHit+'/'+totN+' 回'],
+    ['単勝回収率',   overallROI!==null ? overallROI+'%':'—', '100円均一'],
+  ].map(([l,v,s]) => `<div class="stat-card"><div class="lbl">${l}</div><div class="val">${v}</div><div class="sub">${s}</div></div>`).join('');
+
+  // --- Per-oshi (all) ---
+  document.getElementById('oshi-stat-list').innerHTML = OSHI.map(o => {
+    const s = st[o.s];
+    const roi = roiVal(s.n, s.tanPay);
+    const rc  = roiColor(roi);
+    const wr  = s.n > 0 ? Math.round(s.win/s.n*100)  : 0;
+    const hr  = s.n > 0 ? Math.round(s.hit3/s.n*100) : 0;
+    return `<div class="oshi-stat-row">
+      <span class="oshi-chip ${o.cls}" style="width:28px;height:28px;font-size:14px">${o.s}</span>
+      <div class="oshi-stat-info">
+        <div class="oshi-stat-name">${o.l}</div>
+        <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　着内${s.hit3}回(${hr}%)</div>
+      </div>
+      <div class="oshi-roi">
+        <div class="roi-val ${rc}">${roi!==null ? roi+'%':'—'}</div>
+        <div class="roi-lbl">単勝回収率</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // --- Low odds (≤10倍) per-oshi ---
+  const stLow = calcSt(h => parseFloat(h.odds) > 0 && parseFloat(h.odds) <= 10);
+  const loTotal = OSHI.reduce((a,o) => a+stLow[o.s].n, 0);
+  document.getElementById('lowodds-list').innerHTML = loTotal === 0
+    ? '<div class="group-block"><div style="padding:16px 14px;font-size:13px;color:var(--hint)">オッズ10倍以下のデータなし</div></div>'
+    : buildGroupBlock('全印 合計', 'オッズ10倍以下', stLow)
+      + OSHI.map(o => {
+          const stO = calcSt(h => h.oshi === o.s && parseFloat(h.odds) > 0 && parseFloat(h.odds) <= 10);
+          if (OSHI.reduce((a,x) => a+stO[x.s].n, 0) === 0) return '';
+          return buildGroupBlock(o.l, 'オッズ10倍以下', stO);
+        }).join('');
+
+  // --- Per-course per-oshi ---
+  const courses = [...new Set(recs.map(r => (r.course||'').trim() || '不明'))];
+  courses.sort((a,b) => {
+    const na = recs.filter(r=>((r.course||'').trim()||'不明')===a).reduce((s,r)=>(r.horses||[]).filter(h=>h.rank).length+s,0);
+    const nb = recs.filter(r=>((r.course||'').trim()||'不明')===b).reduce((s,r)=>(r.horses||[]).filter(h=>h.rank).length+s,0);
+    return nb - na;
+  });
+  document.getElementById('course-stat-list').innerHTML = courses.length === 0
+    ? '<div class="group-block"><div style="padding:16px 14px;font-size:13px;color:var(--hint)">競馬場データなし</div></div>'
+    : courses.map(course => {
+        const stC = calcSt((h, r) => ((r.course||'').trim()||'不明') === course);
+        const total = OSHI.reduce((a,o) => a+stC[o.s].n, 0);
+        if (total === 0) return '';
+        return buildGroupBlock(course, '競馬場', stC);
+      }).join('');
+}
+</script>
+</body>
+</html>
