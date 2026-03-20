@@ -556,7 +556,7 @@ function buildGroupBlock(label, sublabel, st) {
     const h2  = s.n > 0 ? Math.round(s.hit3/s.n*100) : 0;
     return `<div class="group-oshi-row">
       <span class="oshi-chip ${o.cls}">${o.s}</span>
-      <div class="group-oshi-info">${s.n}回　単勝${s.win}回(${w}%)　着内${s.hit3}回(${h2}%)</div>
+      <div class="group-oshi-info">${s.n}回　単勝${s.win}回(${w}%)　複勝${s.hit3}回(${h2}%)</div>
       <div style="text-align:right;display:flex;flex-direction:column;gap:2px;min-width:70px">
         <div style="font-size:13px;font-weight:700" class="${rc2}">${r!==null ? r+'%':'—'} <span style="font-size:10px;font-weight:400;color:var(--hint)">単勝</span></div>
         <div style="font-size:13px;font-weight:700" class="${frc2}">${fr!==null ? fr+'%':'—'} <span style="font-size:10px;font-weight:400;color:var(--hint)">複勝</span></div>
@@ -601,7 +601,7 @@ function renderStats() {
   document.getElementById('stat-summary').innerHTML = [
     ['登録レース数', recs.length, '登録中'],
     ['単勝的中率',   totN>0 ? Math.round(totWin/totN*100)+'%':'—', totWin+'/'+totN+' 回'],
-    ['着内的中率',   totN>0 ? Math.round(totHit/totN*100)+'%':'—', totHit+'/'+totN+' 回'],
+    ['複勝的中率',   totN>0 ? Math.round(totHit/totN*100)+'%':'—', totHit+'/'+totN+' 回'],
     ['単勝回収率',   overallROI!==null  ? overallROI+'%':'—',  '100円均一'],
     ['複勝回収率',   overallFROI!==null ? overallFROI+'%':'—', '100円均一'],
   ].map(([l,v,s]) => `<div class="stat-card"><div class="lbl">${l}</div><div class="val">${v}</div><div class="sub">${s}</div></div>`).join('');
@@ -619,7 +619,7 @@ function renderStats() {
       <span class="oshi-chip ${o.cls}" style="width:28px;height:28px;font-size:14px">${o.s}</span>
       <div class="oshi-stat-info">
         <div class="oshi-stat-name">${o.l}</div>
-        <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　着内${s.hit3}回(${hr}%)</div>
+        <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　複勝${s.hit3}回(${hr}%)</div>
       </div>
       <div style="text-align:right;display:flex;flex-direction:column;gap:2px">
         <div><span class="oshi-roi" style="display:inline"><span class="roi-val ${rc}" style="font-size:18px">${roi!==null ? roi+'%':'—'}</span></span> <span style="font-size:10px;color:var(--hint)">単勝</span></div>
