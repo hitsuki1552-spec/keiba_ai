@@ -408,10 +408,6 @@ function saveRecord() {
 }
 
 function clearForm() {
-  document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
-  document.getElementById('f-course').value = '';
-  document.getElementById('f-rno').value = '';
-  document.getElementById('f-race').value = '';
   document.getElementById('horse-list').innerHTML = '';
   OSHI.forEach(o => addHorse(o.s));
   document.getElementById('edit-banner').style.display = 'none';
