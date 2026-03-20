@@ -501,6 +501,10 @@ function renderHistory() {
       <div class="hist-head"><div>
         <div class="hist-race">${r.race}</div>
         <div class="hist-meta">${[r.date, r.course, r.grade, r.rno].filter(Boolean).join(' ')}</div>
+      </div>
+      <div class="hist-actions">
+        <button class="btn btn-secondary btn-small" onclick="editRec(${r.id})">編集</button>
+        <button class="btn btn-danger btn-small" onclick="deleteRec(${r.id});renderHistory()">削除</button>
       </div></div>
       <div class="hist-horses">${horsesHtml}</div>
       ${summaryTxt ? `<div class="hist-summary">${summaryTxt}</div>` : `<div class="no-result">着順未入力</div>`}
@@ -662,15 +666,21 @@ function renderStats() {
   const st = calcSt();
   const totN    = OSHI.reduce((a,o) => a+st[o.s].n, 0);
   const totHit  = OSHI.reduce((a,o) => a+st[o.s].hit3, 0);
-  const totWin  = OSHI.reduce((a,o) => a+st[o.s].win, 0);
   const totPay  = OSHI.reduce((a,o) => a+st[o.s].tanPay, 0);
   const totFuku = OSHI.reduce((a,o) => a+st[o.s].fukuPay, 0);
   const overallROI  = roiVal(totN, totPay);
   const overallFROI = roiVal(totN, totFuku);
 
+  // 単勝的中率: レース単位（そのレースで1着の馬が1頭でもあれば的中）
+  const totalRaces = recs.length;
+  const winRaces = recs.filter(r =>
+    (r.horses||[]).some(h => (h.rank||'').trim() !== '除外' && parseInt(h.rank) === 1)
+  ).length;
+  const winRaceRate = totalRaces > 0 ? Math.round(winRaces / totalRaces * 100) : null;
+
   document.getElementById('stat-summary').innerHTML = [
     ['登録レース数', recs.length, '登録中'],
-    ['単勝的中率',   totN>0 ? Math.round(totWin/totN*100)+'%':'—', totWin+'/'+totN+' 回'],
+    ['単勝的中率',   winRaceRate!==null ? winRaceRate+'%':'—', winRaces+'/'+totalRaces+' レース'],
     ['複勝的中率',   totN>0 ? Math.round(totHit/totN*100)+'%':'—', totHit+'/'+totN+' 回'],
     ['単勝回収率',   overallROI!==null  ? overallROI+'%':'—',  '100円均一'],
     ['複勝回収率',   overallFROI!==null ? overallFROI+'%':'—', '100円均一'],
