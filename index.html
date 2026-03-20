@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -272,11 +273,15 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 
   <!-- HISTORY TAB -->
   <div id="tab-history" class="section">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
       <span style="font-size:12px;color:var(--muted);font-weight:500">ソート：</span>
       <button class="sort-btn active" onclick="setSort('date')">日付順</button>
       <button class="sort-btn" onclick="setSort('course')">競馬場別</button>
       <button class="sort-btn" onclick="setSort('month')">月別</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <input type="date" id="hist-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderHistory()">
+      <button class="sort-btn" onclick="document.getElementById('hist-date-filter').value='';renderHistory()" style="white-space:nowrap;flex-shrink:0">全表示</button>
     </div>
     <div id="hist-list"></div>
   </div>
@@ -466,7 +471,12 @@ function setSort(mode) {
 
 function renderHistory() {
   const el = document.getElementById('hist-list');
-  if (!recs.length) { el.innerHTML = '<div class="empty-state">まだデータがありません</div>'; return; }
+  const filterDate = (document.getElementById('hist-date-filter')||{}).value || '';
+  const filtered = filterDate ? recs.filter(r => r.date === filterDate) : recs;
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty-state">' + (filterDate ? 'この日付のデータはありません' : 'まだデータがありません') + '</div>';
+    return;
+  }
 
   function recCard(r) {
     const horsesHtml = (r.horses||[]).map(h => {
@@ -511,14 +521,12 @@ function renderHistory() {
   }
 
   if (histSort === 'date') {
-    // 登録順（デフォルト）
-    el.innerHTML = recs.map(recCard).join('');
+    el.innerHTML = filtered.map(recCard).join('');
 
   } else if (histSort === 'course') {
-    // 競馬場別グループ
     const COURSE_ORDER = ['札幌','函館','福島','新潟','東京','中山','中京','京都','阪神','小倉','地方','海外'];
     const groups = {};
-    recs.forEach(r => {
+    filtered.forEach(r => {
       const key = (r.course || '').trim() || '未設定';
       if (!groups[key]) groups[key] = [];
       groups[key].push(r);
@@ -533,14 +541,13 @@ function renderHistory() {
     ).join('');
 
   } else if (histSort === 'month') {
-    // 月別グループ
     const groups = {};
-    recs.forEach(r => {
+    filtered.forEach(r => {
       const key = r.date ? r.date.slice(0, 7) : '日付未設定';
       if (!groups[key]) groups[key] = [];
       groups[key].push(r);
     });
-    const keys = Object.keys(groups).sort((a, b) => b.localeCompare(a)); // 新しい月順
+    const keys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
     el.innerHTML = keys.map(key => {
       const label = key.length === 7 ? key.replace('-', '年') + '月' : key;
       return `<div class="hist-group-header">📅 ${label}（${groups[key].length}件）</div>` +
@@ -707,17 +714,12 @@ function renderStats() {
     </div>`;
   }).join('');
 
-  // --- Low odds (≤10倍) per-oshi ---
+  // --- Low odds (≤10倍) 全印合計のみ ---
   const stLow = calcSt(h => parseFloat(h.odds) > 0 && parseFloat(h.odds) <= 10);
   const loTotal = OSHI.reduce((a,o) => a+stLow[o.s].n, 0);
   document.getElementById('lowodds-list').innerHTML = loTotal === 0
     ? '<div class="group-block"><div style="padding:16px 14px;font-size:13px;color:var(--hint)">オッズ10倍以下のデータなし</div></div>'
-    : buildGroupBlock('全印 合計', 'オッズ10倍以下', stLow)
-      + OSHI.map(o => {
-          const stO = calcSt(h => h.oshi === o.s && parseFloat(h.odds) > 0 && parseFloat(h.odds) <= 10);
-          if (OSHI.reduce((a,x) => a+stO[x.s].n, 0) === 0) return '';
-          return buildGroupBlock(o.l, 'オッズ10倍以下', stO);
-        }).join('');
+    : buildGroupBlock('全印 合計', 'オッズ10倍以下', stLow);
 
   // --- Per-course per-oshi ---
   const GRADE_ORDER = ['G1','G2','G3','OP','L','3勝','2勝','1勝','未勝利','新馬','その他'];
