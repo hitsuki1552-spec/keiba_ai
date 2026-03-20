@@ -160,6 +160,14 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 .group-oshi-row:last-child { border-bottom: none; }
 .group-oshi-info { flex: 1; font-size: 12px; color: var(--hint); }
 .group-oshi-roi { text-align: right; font-size: 15px; font-weight: 700; min-width: 52px; }
+
+/* Sort buttons */
+.sort-btn { padding: 6px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; background: var(--surface); color: var(--muted); touch-action: manipulation; transition: all 0.15s; }
+.sort-btn.active { background: var(--text); color: white; border-color: var(--text); }
+
+/* Group header for sorted sections */
+.hist-group-header { font-size: 13px; font-weight: 700; color: var(--muted); padding: 6px 4px 8px; margin-top: 12px; border-bottom: 1.5px solid var(--border); margin-bottom: 8px; letter-spacing: 0.04em; }
+.hist-group-header:first-child { margin-top: 0; }
 </style>
 </head>
 <body>
@@ -265,6 +273,12 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 
   <!-- HISTORY TAB -->
   <div id="tab-history" class="section">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+      <span style="font-size:12px;color:var(--muted);font-weight:500">ソート：</span>
+      <button class="sort-btn active" onclick="setSort('date')">日付順</button>
+      <button class="sort-btn" onclick="setSort('course')">競馬場別</button>
+      <button class="sort-btn" onclick="setSort('month')">月別</button>
+    </div>
     <div id="hist-list"></div>
   </div>
 
@@ -442,10 +456,20 @@ function showMsg(txt, type) {
 }
 
 // ---- HISTORY ----
+let histSort = 'date';
+
+function setSort(mode) {
+  histSort = mode;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderHistory();
+}
+
 function renderHistory() {
   const el = document.getElementById('hist-list');
   if (!recs.length) { el.innerHTML = '<div class="empty-state">まだデータがありません</div>'; return; }
-  el.innerHTML = recs.map(r => {
+
+  function recCard(r) {
     const horsesHtml = (r.horses||[]).map(h => {
       const o = OSHI.find(x => x.s === h.oshi) || OSHI[0];
       const rank = parseInt(h.rank);
@@ -465,31 +489,61 @@ function renderHistory() {
         ${h.odds ? `<span class="odds-txt">${h.odds}倍</span>` : ''}
         <span class="rank-txt" style="margin-left:auto"></span>
         ${chipClass ? `<span class="hit-chip ${chipClass}">${chipTxt}</span>` : ''}
-        ${pay ? `<span style="font-size:12px;color:var(--win);font-weight:700;margin-left:4px">${pay}</span>` : ''}
+        ${pay ? `<span style="font-size:12px;color:#c0392b;font-weight:700;margin-left:4px">${pay}</span>` : ''}
       </div>`;
     }).join('');
-
     const hasResult = (r.horses||[]).some(h => h.rank);
     const winHorse = (r.horses||[]).find(h => parseInt(h.rank)===1);
     const summaryTxt = hasResult
-      ? (winHorse
-          ? `1着: ${winHorse.name}${winHorse.odds ? '（'+winHorse.odds+'倍）' : ''}`
-          : '結果入力あり（1着なし）')
+      ? (winHorse ? `1着: ${winHorse.name}${winHorse.odds ? '（'+winHorse.odds+'倍）' : ''}` : '結果入力あり（1着なし）')
       : null;
-
     return `<div class="hist-item">
-      <div class="hist-head">
-        <div>
-          <div class="hist-race">${r.race}</div>
-          <div class="hist-meta">${[r.date, r.course, r.grade, r.rno].filter(Boolean).join(' ')}</div>
-        </div>
-      </div>
+      <div class="hist-head"><div>
+        <div class="hist-race">${r.race}</div>
+        <div class="hist-meta">${[r.date, r.course, r.grade, r.rno].filter(Boolean).join(' ')}</div>
+      </div></div>
       <div class="hist-horses">${horsesHtml}</div>
-      ${summaryTxt
-        ? `<div class="hist-summary">${summaryTxt}</div>`
-        : `<div class="no-result">着順未入力</div>`}
+      ${summaryTxt ? `<div class="hist-summary">${summaryTxt}</div>` : `<div class="no-result">着順未入力</div>`}
     </div>`;
-  }).join('');
+  }
+
+  if (histSort === 'date') {
+    // 登録順（デフォルト）
+    el.innerHTML = recs.map(recCard).join('');
+
+  } else if (histSort === 'course') {
+    // 競馬場別グループ
+    const COURSE_ORDER = ['札幌','函館','福島','新潟','東京','中山','中京','京都','阪神','小倉','地方','海外'];
+    const groups = {};
+    recs.forEach(r => {
+      const key = (r.course || '').trim() || '未設定';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(r);
+    });
+    const keys = Object.keys(groups).sort((a, b) => {
+      const ai = COURSE_ORDER.indexOf(a), bi = COURSE_ORDER.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+    el.innerHTML = keys.map(key =>
+      `<div class="hist-group-header">🏟 ${key}（${groups[key].length}件）</div>` +
+      groups[key].map(recCard).join('')
+    ).join('');
+
+  } else if (histSort === 'month') {
+    // 月別グループ
+    const groups = {};
+    recs.forEach(r => {
+      const key = r.date ? r.date.slice(0, 7) : '日付未設定';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(r);
+    });
+    const keys = Object.keys(groups).sort((a, b) => b.localeCompare(a)); // 新しい月順
+    el.innerHTML = keys.map(key => {
+      const label = key.length === 7 ? key.replace('-', '年') + '月' : key;
+      return `<div class="hist-group-header">📅 ${label}（${groups[key].length}件）</div>` +
+        groups[key].map(recCard).join('');
+    }).join('');
+  }
 }
 
 function editRec(id) {
