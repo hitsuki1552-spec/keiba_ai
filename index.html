@@ -210,6 +210,22 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
         </div>
       </div>
       <div class="grid2" style="margin-bottom:10px">
+        <div class="field"><label>グレード</label>
+          <select id="f-grade" class="inp">
+            <option value="">選択</option>
+            <option value="G1">G1</option>
+            <option value="G2">G2</option>
+            <option value="G3">G3</option>
+            <option value="OP">OP</option>
+            <option value="L">L</option>
+            <option value="3勝">3勝</option>
+            <option value="2勝">2勝</option>
+            <option value="1勝">1勝</option>
+            <option value="未勝利">未勝利</option>
+            <option value="新馬">新馬</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
         <div class="field"><label>レース番号</label>
           <select id="f-rno" class="inp">
             <option value="">選択</option>
@@ -227,8 +243,8 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
             <option value="12R">12R</option>
           </select>
         </div>
-        <div class="field"><label>レース名</label><input type="text" id="f-race" placeholder="スプリングS G2" class="inp"></div>
       </div>
+      <div class="field"><label>レース名</label><input type="text" id="f-race" placeholder="スプリングS" class="inp"></div>
     </div>
 
     <div class="card">
@@ -264,6 +280,9 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 
     <div class="stat-section-title">競馬場別 単勝回収率（印別）</div>
     <div id="course-stat-list"></div>
+
+    <div class="stat-section-title">グレード別 回収率（印別）</div>
+    <div id="grade-stat-list"></div>
   </div>
 
 </div>
@@ -395,6 +414,7 @@ function saveRecord() {
     id: editId || Date.now(),
     date: document.getElementById('f-date').value,
     course: document.getElementById('f-course').value,
+    grade: document.getElementById('f-grade').value,
     rno: document.getElementById('f-rno').value,
     race,
     horses,
@@ -461,11 +481,7 @@ function renderHistory() {
       <div class="hist-head">
         <div>
           <div class="hist-race">${r.race}</div>
-          <div class="hist-meta">${[r.date, r.course, r.rno].filter(Boolean).join(' ')}</div>
-        </div>
-        <div class="hist-actions">
-          <button class="btn btn-secondary btn-small" onclick="editRec(${r.id})">編集</button>
-          <button class="btn btn-danger btn-small" onclick="deleteRec(${r.id})">削除</button>
+          <div class="hist-meta">${[r.date, r.course, r.grade, r.rno].filter(Boolean).join(' ')}</div>
         </div>
       </div>
       <div class="hist-horses">${horsesHtml}</div>
@@ -482,6 +498,7 @@ function editRec(id) {
   editId = id;
   document.getElementById('f-date').value = r.date || '';
   document.getElementById('f-course').value = r.course || '';
+  document.getElementById('f-grade').value = r.grade || '';
   document.getElementById('f-rno').value = r.rno || '';
   document.getElementById('f-race').value = r.race || '';
   document.getElementById('horse-list').innerHTML = '';
@@ -640,6 +657,7 @@ function renderStats() {
         }).join('');
 
   // --- Per-course per-oshi ---
+  const GRADE_ORDER = ['G1','G2','G3','OP','L','3勝','2勝','1勝','未勝利','新馬','その他'];
   const courses = [...new Set(recs.map(r => (r.course||'').trim() || '不明'))];
   courses.sort((a,b) => {
     const na = recs.filter(r=>((r.course||'').trim()||'不明')===a).reduce((s,r)=>(r.horses||[]).filter(h=>h.rank).length+s,0);
@@ -653,6 +671,21 @@ function renderStats() {
         const total = OSHI.reduce((a,o) => a+stC[o.s].n, 0);
         if (total === 0) return '';
         return buildGroupBlock(course, '競馬場', stC);
+      }).join('');
+
+  // --- Per-grade per-oshi ---
+  const grades = [...new Set(recs.map(r => (r.grade||'').trim() || 'その他'))];
+  grades.sort((a,b) => {
+    const ai = GRADE_ORDER.indexOf(a); const bi = GRADE_ORDER.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+  document.getElementById('grade-stat-list').innerHTML = grades.length === 0
+    ? '<div class="group-block"><div style="padding:16px 14px;font-size:13px;color:var(--hint)">グレードデータなし</div></div>'
+    : grades.map(grade => {
+        const stG = calcSt((h, r) => ((r.grade||'').trim()||'その他') === grade);
+        const total = OSHI.reduce((a,o) => a+stG[o.s].n, 0);
+        if (total === 0) return '';
+        return buildGroupBlock(grade, 'グレード', stG);
       }).join('');
 }
 </script>
