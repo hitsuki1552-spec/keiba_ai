@@ -435,14 +435,30 @@ function saveRecord() {
   if (!race) { showMsg('レース名を入力してください', 'error'); return; }
   const horses = getHorses();
   if (!horses.length) { showMsg('馬情報を入力してください', 'error'); return; }
+
+  const date   = document.getElementById('f-date').value;
+  const course = document.getElementById('f-course').value;
+  const rno    = document.getElementById('f-rno').value;
+
+  // 重複チェック（日付・競馬場・レース番号が同じ既存レコード）
+  if (rno) {
+    const dup = recs.find(r =>
+      r.id !== editId &&
+      r.date === date &&
+      r.course === course &&
+      r.rno === rno
+    );
+    if (dup) {
+      showMsg(`⚠️ ${date} ${course} ${rno} はすでに登録されています（${dup.race}）`, 'error');
+      return;
+    }
+  }
+
   const rec = {
     id: editId || Date.now(),
-    date: document.getElementById('f-date').value,
-    course: document.getElementById('f-course').value,
+    date, course,
     grade: document.getElementById('f-grade').value,
-    rno: document.getElementById('f-rno').value,
-    race,
-    horses,
+    rno, race, horses,
   };
   if (editId) { recs = recs.map(r => r.id === editId ? rec : r); }
   else { recs.unshift(rec); }
