@@ -433,8 +433,10 @@ function renderHistory() {
     const horsesHtml = (r.horses||[]).map(h => {
       const o = OSHI.find(x => x.s === h.oshi) || OSHI[0];
       const rank = parseInt(h.rank);
+      const rankTxt = (h.rank || '').trim();
       let chipClass = '', chipTxt = '';
-      if (h.rank) {
+      if (rankTxt === '除外') { chipClass = 'chip-lose'; chipTxt = '除外'; }
+      else if (rankTxt) {
         if (rank === 1)      { chipClass = 'chip-1st';  chipTxt = '1着'; }
         else if (rank === 2) { chipClass = 'chip-2nd';  chipTxt = '2着'; }
         else if (rank === 3) { chipClass = 'chip-3rd';  chipTxt = '3着'; }
@@ -514,6 +516,7 @@ function calcSt(filter) {
     (r.horses||[]).forEach(h => {
       if (filter && !filter(h, r)) return;
       const s = st[h.oshi]; if (!s) return;
+      if ((h.rank || '').trim() === '除外') return;
       const rank = parseInt(h.rank) || 99;
       s.n++;
       if (rank <= 3) {
