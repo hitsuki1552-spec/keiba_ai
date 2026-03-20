@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -300,6 +301,13 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 
     <div class="stat-section-title">グレード別 回収率（印別）</div>
     <div id="grade-stat-list"></div>
+
+    <div class="stat-section-title">日付別 印別回収率</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="date" id="stats-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderDateStats()">
+      <button class="sort-btn" onclick="document.getElementById('stats-date-filter').value='';renderDateStats()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
+    <div id="date-stat-block"></div>
   </div>
 
 </div>
@@ -751,6 +759,73 @@ function renderStats() {
         if (total === 0) return '';
         return buildGroupBlock(grade, 'グレード', stG);
       }).join('');
+
+  renderDateStats();
+}
+
+function renderDateStats() {
+  const el = document.getElementById('date-stat-block');
+  const date = (document.getElementById('stats-date-filter')||{}).value || '';
+
+  if (!date) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">日付を選択すると印別回収率を表示します</div>';
+    return;
+  }
+
+  const dayRecs = recs.filter(r => r.date === date);
+  if (!dayRecs.length) {
+    el.innerHTML = '<div class="group-block"><div style="padding:16px 14px;font-size:13px;color:var(--hint)">この日付のデータなし</div></div>';
+    return;
+  }
+
+  // calcSt を日付で絞り込み
+  const stDay = calcSt((h, r) => r.date === date);
+  const totN = OSHI.reduce((a,o) => a+stDay[o.s].n, 0);
+  if (totN === 0) {
+    el.innerHTML = '<div class="group-block"><div style="padding:16px 14px;font-size:13px;color:var(--hint)">この日付に集計データなし</div></div>';
+    return;
+  }
+
+  // ヘッダー：日付・レース数
+  const dateLabel = date.replace(/-/g, '/');
+  const totPay  = OSHI.reduce((a,o) => a+stDay[o.s].tanPay, 0);
+  const totFuku = OSHI.reduce((a,o) => a+stDay[o.s].fukuPay, 0);
+  const totWin  = OSHI.reduce((a,o) => a+stDay[o.s].win, 0);
+  const roi  = roiVal(totN, totPay);
+  const froi = roiVal(totN, totFuku);
+
+  const rows = OSHI.map(o => {
+    const s = stDay[o.s];
+    if (s.n === 0) return '';
+    const r  = roiVal(s.n, s.tanPay);
+    const fr = roiVal(s.n, s.fukuPay);
+    const wr = s.n > 0 ? Math.round(s.win/s.n*100) : 0;
+    const hr = s.n > 0 ? Math.round(s.hit3/s.n*100) : 0;
+    return `<div class="oshi-stat-row">
+      <span class="oshi-chip ${o.cls}" style="width:28px;height:28px;font-size:14px">${o.s}</span>
+      <div class="oshi-stat-info">
+        <div class="oshi-stat-name">${o.l}</div>
+        <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　複勝${s.hit3}回(${hr}%)</div>
+      </div>
+      <div style="text-align:right;display:flex;flex-direction:column;gap:2px">
+        <div><span class="roi-val ${roiColor(r)}" style="font-size:18px;font-weight:700">${r!==null?r+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">単勝</span></div>
+        <div><span class="roi-val ${roiColor(fr)}" style="font-size:18px;font-weight:700">${fr!==null?fr+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">複勝</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:8px">
+      <div>
+        <div style="font-size:14px;font-weight:700">${dateLabel}</div>
+        <div style="font-size:12px;color:var(--hint);margin-top:2px">${dayRecs.length}レース　${totN}頭</div>
+      </div>
+      <div style="text-align:right;display:flex;gap:14px">
+        <div><div style="font-size:20px;font-weight:700" class="${roiColor(roi)}">${roi!==null?roi+'%':'—'}</div><div style="font-size:11px;color:var(--hint)">単勝回収率</div></div>
+        <div><div style="font-size:20px;font-weight:700" class="${roiColor(froi)}">${froi!==null?froi+'%':'—'}</div><div style="font-size:11px;color:var(--hint)">複勝回収率</div></div>
+      </div>
+    </div>
+    <div class="oshi-stat-list">${rows || '<div style="padding:12px 14px;font-size:13px;color:var(--hint)">データなし</div>'}</div>`;
 }
 </script>
 </body>
