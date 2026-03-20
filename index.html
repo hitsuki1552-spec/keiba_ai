@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -314,12 +313,17 @@ function addHorse(defaultOshi, data) {
              value="${data.name||''}" oninput="judgeCard(this.closest('.horse-card'))">
       <button class="remove-btn" onclick="this.closest('.horse-card').remove()">×</button>
     </div>
-    <div class="horse-sub">
+    <div class="horse-sub" style="grid-template-columns:1fr 1fr 1fr">
       <div class="field">
         <label>オッズ（倍）</label>
         <input type="text" placeholder="2.1"
                class="horse-odds inp" value="${data.odds||''}"
                oninput="judgeCard(this.closest('.horse-card'))">
+      </div>
+      <div class="field">
+        <label>複勝配当（円）</label>
+        <input type="text" placeholder="150"
+               class="horse-fuku inp" value="${data.fuku||''}">
       </div>
       <div class="field">
         <label>着順</label>
@@ -354,13 +358,16 @@ function judgeCard(card) {
   if (rank === 1) {
     card.classList.add('st-win');
     const odds = parseFloat(card.querySelector('.horse-odds').value) || 0;
-    badge.textContent = '1着 🥇' + (odds ? '  ＋' + Math.round(odds * 100) + '円' : '');
+    const fuku = parseFloat(card.querySelector('.horse-fuku').value) || 0;
+    badge.textContent = '1着 🥇' + (odds ? '  ＋' + Math.round(odds * 100) + '円' : '') + (fuku ? '  複勝＋' + fuku + '円' : '');
   } else if (rank === 2) {
     card.classList.add('st-2nd');
-    badge.textContent = '2着 🥈';
+    const fuku = parseFloat(card.querySelector('.horse-fuku').value) || 0;
+    badge.textContent = '2着 🥈' + (fuku ? '  複勝＋' + fuku + '円' : '');
   } else if (rank === 3) {
     card.classList.add('st-3rd');
-    badge.textContent = '3着 🥉';
+    const fuku = parseFloat(card.querySelector('.horse-fuku').value) || 0;
+    badge.textContent = '3着 🥉' + (fuku ? '  複勝＋' + fuku + '円' : '');
   } else {
     card.classList.add('st-lose');
     badge.textContent = rank + '着';
@@ -372,6 +379,7 @@ function getHorses() {
     oshi:  card.querySelector('.oshi-select').value,
     name:  card.querySelector('.horse-name').value.trim(),
     odds:  card.querySelector('.horse-odds').value,
+    fuku:  card.querySelector('.horse-fuku').value,
     rank:  card.querySelector('.horse-rank').value,
   })).filter(h => h.name);
 }
@@ -500,14 +508,17 @@ function deleteRec(id) {
 // ---- STATS ----
 function calcSt(filter) {
   const st = {};
-  OSHI.forEach(o => { st[o.s] = { n:0, hit3:0, win:0, tanPay:0 }; });
+  OSHI.forEach(o => { st[o.s] = { n:0, hit3:0, win:0, tanPay:0, fukuPay:0 }; });
   recs.forEach(r => {
     (r.horses||[]).forEach(h => {
       if (filter && !filter(h, r)) return;
       const s = st[h.oshi]; if (!s) return;
-      const rank = parseInt(h.rank) || 99; // blank = treated as 4th or lower
+      const rank = parseInt(h.rank) || 99;
       s.n++;
-      if (rank <= 3) s.hit3++;
+      if (rank <= 3) {
+        s.hit3++;
+        s.fukuPay += parseFloat(h.fuku) || 0;
+      }
       if (rank === 1) { s.win++; s.tanPay += Math.round((parseFloat(h.odds)||0) * 100); }
     });
   });
@@ -523,23 +534,32 @@ function roiVal(n, pay) {
 
 // Build a group-block card with a header (total ROI) + per-oshi rows
 function buildGroupBlock(label, sublabel, st) {
-  const totN   = OSHI.reduce((a,o) => a+st[o.s].n, 0);
-  const totWin = OSHI.reduce((a,o) => a+st[o.s].win, 0);
-  const totPay = OSHI.reduce((a,o) => a+st[o.s].tanPay, 0);
-  const roi    = roiVal(totN, totPay);
-  const rc     = roiColor(roi);
-  const wr     = totN > 0 ? Math.round(totWin/totN*100) : 0;
+  const totN    = OSHI.reduce((a,o) => a+st[o.s].n, 0);
+  const totWin  = OSHI.reduce((a,o) => a+st[o.s].win, 0);
+  const totPay  = OSHI.reduce((a,o) => a+st[o.s].tanPay, 0);
+  const totFuku = OSHI.reduce((a,o) => a+st[o.s].fukuPay, 0);
+  const roi     = roiVal(totN, totPay);
+  const fukuROI = roiVal(totN, totFuku);
+  const rc      = roiColor(roi);
+  const frc     = roiColor(fukuROI);
+  const wr      = totN > 0 ? Math.round(totWin/totN*100) : 0;
 
   const rows = OSHI.map(o => {
     const s = st[o.s];
     if (s.n === 0) return '';
-    const r = roiVal(s.n, s.tanPay);
+    const r   = roiVal(s.n, s.tanPay);
+    const fr  = roiVal(s.n, s.fukuPay);
     const rc2 = roiColor(r);
-    const w = s.n > 0 ? Math.round(s.win/s.n*100) : 0;
+    const frc2= roiColor(fr);
+    const w   = s.n > 0 ? Math.round(s.win/s.n*100) : 0;
+    const h2  = s.n > 0 ? Math.round(s.hit3/s.n*100) : 0;
     return `<div class="group-oshi-row">
       <span class="oshi-chip ${o.cls}">${o.s}</span>
-      <div class="group-oshi-info">${s.n}回　単勝${s.win}回(${w}%)</div>
-      <div class="group-oshi-roi ${rc2}">${r!==null ? r+'%' : '—'}</div>
+      <div class="group-oshi-info">${s.n}回　単勝${s.win}回(${w}%)　着内${s.hit3}回(${h2}%)</div>
+      <div style="text-align:right;display:flex;flex-direction:column;gap:2px;min-width:70px">
+        <div style="font-size:13px;font-weight:700" class="${rc2}">${r!==null ? r+'%':'—'} <span style="font-size:10px;font-weight:400;color:var(--hint)">単勝</span></div>
+        <div style="font-size:13px;font-weight:700" class="${frc2}">${fr!==null ? fr+'%':'—'} <span style="font-size:10px;font-weight:400;color:var(--hint)">複勝</span></div>
+      </div>
     </div>`;
   }).join('');
 
@@ -549,9 +569,17 @@ function buildGroupBlock(label, sublabel, st) {
         <div class="group-header-name">${label}</div>
         <div style="font-size:11px;color:var(--hint);margin-top:1px">${sublabel}　${totN}回　単勝${totWin}回(${wr}%)</div>
       </div>
-      <div>
-        <div class="group-header-roi ${rc}">${roi!==null ? roi+'%' : '—'}</div>
-        <div class="group-header-sub">単勝回収率</div>
+      <div style="text-align:right">
+        <div style="display:flex;gap:10px;align-items:baseline;justify-content:flex-end">
+          <div>
+            <div class="group-header-roi ${rc}">${roi!==null ? roi+'%':'—'}</div>
+            <div class="group-header-sub">単勝回収率</div>
+          </div>
+          <div>
+            <div class="group-header-roi ${frc}">${fukuROI!==null ? fukuROI+'%':'—'}</div>
+            <div class="group-header-sub">複勝回収率</div>
+          </div>
+        </div>
       </div>
     </div>
     ${rows || '<div style="padding:10px 14px;font-size:12px;color:var(--hint)">データなし</div>'}
@@ -561,35 +589,40 @@ function buildGroupBlock(label, sublabel, st) {
 function renderStats() {
   // --- Overall summary ---
   const st = calcSt();
-  const totN   = OSHI.reduce((a,o) => a+st[o.s].n, 0);
-  const totHit = OSHI.reduce((a,o) => a+st[o.s].hit3, 0);
-  const totWin = OSHI.reduce((a,o) => a+st[o.s].win, 0);
-  const totPay = OSHI.reduce((a,o) => a+st[o.s].tanPay, 0);
-  const overallROI = roiVal(totN, totPay);
+  const totN    = OSHI.reduce((a,o) => a+st[o.s].n, 0);
+  const totHit  = OSHI.reduce((a,o) => a+st[o.s].hit3, 0);
+  const totWin  = OSHI.reduce((a,o) => a+st[o.s].win, 0);
+  const totPay  = OSHI.reduce((a,o) => a+st[o.s].tanPay, 0);
+  const totFuku = OSHI.reduce((a,o) => a+st[o.s].fukuPay, 0);
+  const overallROI  = roiVal(totN, totPay);
+  const overallFROI = roiVal(totN, totFuku);
 
   document.getElementById('stat-summary').innerHTML = [
     ['登録レース数', recs.length, '登録中'],
     ['単勝的中率',   totN>0 ? Math.round(totWin/totN*100)+'%':'—', totWin+'/'+totN+' 回'],
     ['着内的中率',   totN>0 ? Math.round(totHit/totN*100)+'%':'—', totHit+'/'+totN+' 回'],
-    ['単勝回収率',   overallROI!==null ? overallROI+'%':'—', '100円均一'],
+    ['単勝回収率',   overallROI!==null  ? overallROI+'%':'—',  '100円均一'],
+    ['複勝回収率',   overallFROI!==null ? overallFROI+'%':'—', '100円均一'],
   ].map(([l,v,s]) => `<div class="stat-card"><div class="lbl">${l}</div><div class="val">${v}</div><div class="sub">${s}</div></div>`).join('');
 
   // --- Per-oshi (all) ---
   document.getElementById('oshi-stat-list').innerHTML = OSHI.map(o => {
-    const s = st[o.s];
-    const roi = roiVal(s.n, s.tanPay);
-    const rc  = roiColor(roi);
-    const wr  = s.n > 0 ? Math.round(s.win/s.n*100)  : 0;
-    const hr  = s.n > 0 ? Math.round(s.hit3/s.n*100) : 0;
+    const s     = st[o.s];
+    const roi   = roiVal(s.n, s.tanPay);
+    const froi  = roiVal(s.n, s.fukuPay);
+    const rc    = roiColor(roi);
+    const frc   = roiColor(froi);
+    const wr    = s.n > 0 ? Math.round(s.win/s.n*100)  : 0;
+    const hr    = s.n > 0 ? Math.round(s.hit3/s.n*100) : 0;
     return `<div class="oshi-stat-row">
       <span class="oshi-chip ${o.cls}" style="width:28px;height:28px;font-size:14px">${o.s}</span>
       <div class="oshi-stat-info">
         <div class="oshi-stat-name">${o.l}</div>
         <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　着内${s.hit3}回(${hr}%)</div>
       </div>
-      <div class="oshi-roi">
-        <div class="roi-val ${rc}">${roi!==null ? roi+'%':'—'}</div>
-        <div class="roi-lbl">単勝回収率</div>
+      <div style="text-align:right;display:flex;flex-direction:column;gap:2px">
+        <div><span class="oshi-roi" style="display:inline"><span class="roi-val ${rc}" style="font-size:18px">${roi!==null ? roi+'%':'—'}</span></span> <span style="font-size:10px;color:var(--hint)">単勝</span></div>
+        <div><span class="oshi-roi" style="display:inline"><span class="roi-val ${frc}" style="font-size:18px">${froi!==null ? froi+'%':'—'}</span></span> <span style="font-size:10px;color:var(--hint)">複勝</span></div>
       </div>
     </div>`;
   }).join('');
@@ -625,3 +658,4 @@ function renderStats() {
 </script>
 </body>
 </html>
+
