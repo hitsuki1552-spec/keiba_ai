@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -543,8 +542,17 @@ function renderHistory() {
     </div>`;
   }
 
+  // レース番号順ソート関数
+  const RNO = ['1R','2R','3R','4R','5R','6R','7R','8R','9R','10R','11R','12R'];
+  function sortByRno(arr) {
+    return [...arr].sort((a, b) => {
+      const ai = RNO.indexOf(a.rno), bi = RNO.indexOf(b.rno);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+  }
+
   if (histSort === 'date') {
-    el.innerHTML = filtered.map(recCard).join('');
+    el.innerHTML = sortByRno(filtered).map(recCard).join('');
 
   } else if (histSort === 'course') {
     const COURSE_ORDER = ['札幌','函館','福島','新潟','東京','中山','中京','京都','阪神','小倉','地方','海外'];
@@ -560,7 +568,7 @@ function renderHistory() {
     });
     el.innerHTML = keys.map(key =>
       `<div class="hist-group-header">🏟 ${key}（${groups[key].length}件）</div>` +
-      groups[key].map(recCard).join('')
+      sortByRno(groups[key]).map(recCard).join('')
     ).join('');
 
   } else if (histSort === 'month') {
@@ -574,7 +582,7 @@ function renderHistory() {
     el.innerHTML = keys.map(key => {
       const label = key.length === 7 ? key.replace('-', '年') + '月' : key;
       return `<div class="hist-group-header">📅 ${label}（${groups[key].length}件）</div>` +
-        groups[key].map(recCard).join('');
+        sortByRno(groups[key]).map(recCard).join('');
     }).join('');
   }
 }
@@ -846,5 +854,3 @@ function renderDateStats() {
 </script>
 </body>
 </html>
-
-
