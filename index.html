@@ -445,7 +445,7 @@ function judgeCard(card) {
 
 function getHorses() {
   return Array.from(document.querySelectorAll('.horse-card')).map(card => ({
-    oshi:  card.dataset.oshi,
+    oshi:  card.querySelector('.oshi-select').value,
     name:  card.querySelector('.horse-name').value.trim(),
     odds:  card.querySelector('.horse-odds').value,
     fuku:  card.querySelector('.horse-fuku').value,
@@ -567,11 +567,12 @@ function renderHistory() {
         else if (rank === 3) { chipClass = 'chip-3rd';  chipTxt = '3着'; }
         else                 { chipClass = 'chip-lose'; chipTxt = rank+'着'; }
       }
-      const pay = (rank === 1 && h.odds && parseFloat(h.odds) > 0) ? '+' + Math.round(parseFloat(h.odds)*100) + '円' : '';
+      const oddsVal = h.odds && h.odds !== 'undefined' && parseFloat(h.odds) > 0;
+      const pay = (rank === 1 && oddsVal) ? '+' + Math.round(parseFloat(h.odds)*100) + '円' : '';
       return `<div class="hist-horse">
         <span class="oshi-chip ${o.cls}">${h.oshi}</span>
         <span>${h.name}</span>
-        ${h.odds && parseFloat(h.odds) > 0 ? `<span class="odds-txt">${h.odds}倍</span>` : ''}
+        ${oddsVal ? `<span class="odds-txt">${h.odds}倍</span>` : ''}
         <span class="rank-txt" style="margin-left:auto"></span>
         ${chipClass ? `<span class="hit-chip ${chipClass}">${chipTxt}</span>` : ''}
         ${pay ? `<span style="font-size:12px;color:#c0392b;font-weight:700;margin-left:4px">${pay}</span>` : ''}
@@ -580,7 +581,9 @@ function renderHistory() {
     const hasResult = (r.horses||[]).some(h => h.rank);
     const winHorse = (r.horses||[]).find(h => parseInt(h.rank)===1);
     const summaryTxt = hasResult
-      ? (winHorse ? `1着: ${winHorse.name}${winHorse.odds && parseFloat(winHorse.odds) > 0 ? '（'+winHorse.odds+'倍）' : ''}${r.uren && parseFloat(r.uren) > 0 ? '　馬連: '+r.uren+'円' : ''}` : `結果入力あり（1着なし）${r.uren && parseFloat(r.uren) > 0 ? '　馬連: '+r.uren+'円' : ''}`)
+      ? (winHorse
+          ? `1着: ${winHorse.name}${winHorse.odds && winHorse.odds !== 'undefined' && parseFloat(winHorse.odds) > 0 ? '（'+winHorse.odds+'倍）' : ''}${r.uren && r.uren !== 'undefined' && parseFloat(r.uren) > 0 ? '　馬連: '+r.uren+'円' : ''}`
+          : `結果入力あり（1着なし）${r.uren && r.uren !== 'undefined' && parseFloat(r.uren) > 0 ? '　馬連: '+r.uren+'円' : ''}`)
       : null;
     return `<div class="hist-item">
       <div class="hist-head"><div>
@@ -982,4 +985,3 @@ function renderDateStats() {
 </script>
 </body>
 </html>
-
