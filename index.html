@@ -328,7 +328,29 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
     <div class="stat-section-title">オッズ10倍以下 限定集計（印別）</div>
     <div id="lowodds-list"></div>
 
-    <div class="stat-section-title">競馬場別 単勝回収率（印別）</div>
+    <div class="stat-section-title">競馬場別 回収率（印別）</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <select id="stats-course-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" onchange="renderCourseStats()">
+        <option value="">競馬場を選択</option>
+        <optgroup label="中央">
+          <option value="札幌">札幌</option>
+          <option value="函館">函館</option>
+          <option value="福島">福島</option>
+          <option value="新潟">新潟</option>
+          <option value="東京">東京</option>
+          <option value="中山">中山</option>
+          <option value="中京">中京</option>
+          <option value="京都">京都</option>
+          <option value="阪神">阪神</option>
+          <option value="小倉">小倉</option>
+        </optgroup>
+        <optgroup label="その他">
+          <option value="地方">地方</option>
+          <option value="海外">海外</option>
+        </optgroup>
+      </select>
+      <button class="sort-btn" onclick="document.getElementById('stats-course-filter').value='';renderCourseStats()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
     <div id="course-stat-list"></div>
 
     <div class="stat-section-title">グレード別 回収率（印別）</div>
@@ -873,23 +895,7 @@ function renderStats() {
     ? '<div class="group-block"><div style="padding:16px 14px;font-size:13px;color:var(--hint)">オッズ10倍以下のデータなし</div></div>'
     : buildGroupBlock('全印 合計', 'オッズ10倍以下', stLow);
 
-  // --- Per-course per-oshi ---
-  const GRADE_ORDER = ['G1','G2','G3','OP','L','3勝','2勝','1勝','未勝利','新馬','その他'];
-  const courses = [...new Set(recs.map(r => (r.course||'').trim() || '不明'))];
-  courses.sort((a,b) => {
-    const na = recs.filter(r=>((r.course||'').trim()||'不明')===a).reduce((s,r)=>(r.horses||[]).filter(h=>h.rank).length+s,0);
-    const nb = recs.filter(r=>((r.course||'').trim()||'不明')===b).reduce((s,r)=>(r.horses||[]).filter(h=>h.rank).length+s,0);
-    return nb - na;
-  });
-  document.getElementById('course-stat-list').innerHTML = courses.length === 0
-    ? '<div class="group-block"><div style="padding:16px 14px;font-size:13px;color:var(--hint)">競馬場データなし</div></div>'
-    : courses.map(course => {
-        const stC = calcSt((h, r) => ((r.course||'').trim()||'不明') === course);
-        const total = OSHI.reduce((a,o) => a+stC[o.s].n, 0);
-        if (total === 0) return '';
-        return buildGroupBlock(course, '競馬場', stC);
-      }).join('');
-
+  renderCourseStats();
   renderGradeStats();
   renderDateStats();
 
@@ -981,6 +987,64 @@ function renderDateStats() {
       <div>
         <div style="font-size:14px;font-weight:700">${dateLabel}</div>
         <div style="font-size:12px;color:var(--hint);margin-top:2px">${dayRecs.length}レース　${totN}頭</div>
+      </div>
+      <div style="text-align:right;display:flex;gap:14px">
+        <div><div style="font-size:20px;font-weight:700" class="${roiColor(roi)}">${roi!==null?roi+'%':'—'}</div><div style="font-size:11px;color:var(--hint)">単勝回収率</div></div>
+        <div><div style="font-size:20px;font-weight:700" class="${roiColor(froi)}">${froi!==null?froi+'%':'—'}</div><div style="font-size:11px;color:var(--hint)">複勝回収率</div></div>
+      </div>
+    </div>
+    <div class="oshi-stat-list">${rows || '<div style="padding:12px 14px;font-size:13px;color:var(--hint)">データなし</div>'}</div>`;
+}
+
+function renderCourseStats() {
+  const el = document.getElementById('course-stat-list');
+  const course = (document.getElementById('stats-course-filter')||{}).value || '';
+
+  if (!course) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">競馬場を選択すると印別回収率を表示します</div>';
+    return;
+  }
+
+  const stC = calcSt((h, r) => ((r.course||'').trim()||'不明') === course);
+  const totN = OSHI.reduce((a,o) => a+stC[o.s].n, 0);
+
+  if (totN === 0) {
+    el.innerHTML = '<div class="group-block"><div style="padding:16px 14px;font-size:13px;color:var(--hint)">この競馬場のデータなし</div></div>';
+    return;
+  }
+
+  const totPay  = OSHI.reduce((a,o) => a+stC[o.s].tanPay, 0);
+  const totFuku = OSHI.reduce((a,o) => a+stC[o.s].fukuPay, 0);
+  const totWin  = OSHI.reduce((a,o) => a+stC[o.s].win, 0);
+  const roi  = roiVal(totN, totPay);
+  const froi = roiVal(totN, totFuku);
+
+  const rows = OSHI.map(o => {
+    const s = stC[o.s];
+    if (s.n === 0) return '';
+    const r  = roiVal(s.n, s.tanPay);
+    const fr = roiVal(s.n, s.fukuPay);
+    const wr = s.n > 0 ? Math.round(s.win/s.n*100) : 0;
+    const hr = s.n > 0 ? Math.round(s.hit3/s.n*100) : 0;
+    return `<div class="oshi-stat-row">
+      <span class="oshi-chip ${o.cls}" style="width:28px;height:28px;font-size:14px">${o.s}</span>
+      <div class="oshi-stat-info">
+        <div class="oshi-stat-name">${o.l}</div>
+        <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　複勝${s.hit3}回(${hr}%)</div>
+      </div>
+      <div style="text-align:right;display:flex;flex-direction:column;gap:2px">
+        <div><span class="roi-val ${roiColor(r)}" style="font-size:18px;font-weight:700">${r!==null?r+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">単勝</span></div>
+        <div><span class="roi-val ${roiColor(fr)}" style="font-size:18px;font-weight:700">${fr!==null?fr+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">複勝</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const courseRaceCount = recs.filter(r => ((r.course||'').trim()||'不明') === course).length;
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:8px">
+      <div>
+        <div style="font-size:14px;font-weight:700">${course}</div>
+        <div style="font-size:12px;color:var(--hint);margin-top:2px">${courseRaceCount}レース　${totN}頭</div>
       </div>
       <div style="text-align:right;display:flex;gap:14px">
         <div><div style="font-size:20px;font-weight:700" class="${roiColor(roi)}">${roi!==null?roi+'%':'—'}</div><div style="font-size:11px;color:var(--hint)">単勝回収率</div></div>
