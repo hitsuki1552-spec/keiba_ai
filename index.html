@@ -332,6 +332,23 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
     <div id="course-stat-list"></div>
 
     <div class="stat-section-title">グレード別 回収率（印別）</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <select id="stats-grade-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" onchange="renderGradeStats()">
+        <option value="">グレードを選択</option>
+        <option value="G1">G1</option>
+        <option value="G2">G2</option>
+        <option value="G3">G3</option>
+        <option value="OP">OP</option>
+        <option value="L">L</option>
+        <option value="3勝">3勝</option>
+        <option value="2勝">2勝</option>
+        <option value="1勝">1勝</option>
+        <option value="未勝利">未勝利</option>
+        <option value="新馬">新馬</option>
+        <option value="その他">その他</option>
+      </select>
+      <button class="sort-btn" onclick="document.getElementById('stats-grade-filter').value='';renderGradeStats()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
     <div id="grade-stat-list"></div>
   </div>
 
@@ -873,22 +890,9 @@ function renderStats() {
         return buildGroupBlock(course, '競馬場', stC);
       }).join('');
 
-  // --- Per-grade per-oshi ---
-  const grades = [...new Set(recs.map(r => (r.grade||'').trim() || 'その他'))];
-  grades.sort((a,b) => {
-    const ai = GRADE_ORDER.indexOf(a); const bi = GRADE_ORDER.indexOf(b);
-    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-  });
-  document.getElementById('grade-stat-list').innerHTML = grades.length === 0
-    ? '<div class="group-block"><div style="padding:16px 14px;font-size:13px;color:var(--hint)">グレードデータなし</div></div>'
-    : grades.map(grade => {
-        const stG = calcSt((h, r) => ((r.grade||'').trim()||'その他') === grade);
-        const total = OSHI.reduce((a,o) => a+stG[o.s].n, 0);
-        if (total === 0) return '';
-        return buildGroupBlock(grade, 'グレード', stG);
-      }).join('');
+  renderGradeStats();
+  renderDateStats();
 
-  // --- 馬連 ◎軸流し比較 ---
   const flowPatterns = [
     { label: '◎ → ○',       partners: ['○'] },
     { label: '◎ → ○▲',     partners: ['○','▲'] },
@@ -914,8 +918,6 @@ function renderStats() {
       <div style="background:var(--surface2);padding:8px 14px;font-size:12px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">◎が1着or2着に入り、相手印も1着or2着に入った場合を的中とする</div>
       ${flowRows || '<div style="padding:14px;font-size:13px;color:var(--hint)">データなし</div>'}
     </div>`;
-
-  renderDateStats();
 }
 
 function renderDateStats() {
@@ -974,6 +976,64 @@ function renderDateStats() {
       <div>
         <div style="font-size:14px;font-weight:700">${dateLabel}</div>
         <div style="font-size:12px;color:var(--hint);margin-top:2px">${dayRecs.length}レース　${totN}頭</div>
+      </div>
+      <div style="text-align:right;display:flex;gap:14px">
+        <div><div style="font-size:20px;font-weight:700" class="${roiColor(roi)}">${roi!==null?roi+'%':'—'}</div><div style="font-size:11px;color:var(--hint)">単勝回収率</div></div>
+        <div><div style="font-size:20px;font-weight:700" class="${roiColor(froi)}">${froi!==null?froi+'%':'—'}</div><div style="font-size:11px;color:var(--hint)">複勝回収率</div></div>
+      </div>
+    </div>
+    <div class="oshi-stat-list">${rows || '<div style="padding:12px 14px;font-size:13px;color:var(--hint)">データなし</div>'}</div>`;
+}
+
+function renderGradeStats() {
+  const el = document.getElementById('grade-stat-list');
+  const grade = (document.getElementById('stats-grade-filter')||{}).value || '';
+
+  if (!grade) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">グレードを選択すると印別回収率を表示します</div>';
+    return;
+  }
+
+  const stG = calcSt((h, r) => ((r.grade||'').trim()||'その他') === grade);
+  const totN = OSHI.reduce((a,o) => a+stG[o.s].n, 0);
+
+  if (totN === 0) {
+    el.innerHTML = '<div class="group-block"><div style="padding:16px 14px;font-size:13px;color:var(--hint)">このグレードのデータなし</div></div>';
+    return;
+  }
+
+  const totPay  = OSHI.reduce((a,o) => a+stG[o.s].tanPay, 0);
+  const totFuku = OSHI.reduce((a,o) => a+stG[o.s].fukuPay, 0);
+  const totWin  = OSHI.reduce((a,o) => a+stG[o.s].win, 0);
+  const roi  = roiVal(totN, totPay);
+  const froi = roiVal(totN, totFuku);
+
+  const rows = OSHI.map(o => {
+    const s = stG[o.s];
+    if (s.n === 0) return '';
+    const r  = roiVal(s.n, s.tanPay);
+    const fr = roiVal(s.n, s.fukuPay);
+    const wr = s.n > 0 ? Math.round(s.win/s.n*100) : 0;
+    const hr = s.n > 0 ? Math.round(s.hit3/s.n*100) : 0;
+    return `<div class="oshi-stat-row">
+      <span class="oshi-chip ${o.cls}" style="width:28px;height:28px;font-size:14px">${o.s}</span>
+      <div class="oshi-stat-info">
+        <div class="oshi-stat-name">${o.l}</div>
+        <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　複勝${s.hit3}回(${hr}%)</div>
+      </div>
+      <div style="text-align:right;display:flex;flex-direction:column;gap:2px">
+        <div><span class="roi-val ${roiColor(r)}" style="font-size:18px;font-weight:700">${r!==null?r+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">単勝</span></div>
+        <div><span class="roi-val ${roiColor(fr)}" style="font-size:18px;font-weight:700">${fr!==null?fr+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">複勝</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const gradeRaceCount = recs.filter(r => ((r.grade||'').trim()||'その他') === grade).length;
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:8px">
+      <div>
+        <div style="font-size:14px;font-weight:700">${grade}</div>
+        <div style="font-size:12px;color:var(--hint);margin-top:2px">${gradeRaceCount}レース　${totN}頭</div>
       </div>
       <div style="text-align:right;display:flex;gap:14px">
         <div><div style="font-size:20px;font-weight:700" class="${roiColor(roi)}">${roi!==null?roi+'%':'—'}</div><div style="font-size:11px;color:var(--hint)">単勝回収率</div></div>
