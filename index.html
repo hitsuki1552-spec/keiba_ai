@@ -484,7 +484,7 @@ function saveRecord() {
   // 重複チェック（日付・競馬場・レース番号が同じ既存レコード）
   if (rno) {
     const dup = recs.find(r =>
-      r.id !== editId &&
+      Number(r.id) !== Number(editId) &&
       r.date === date &&
       r.course === course &&
       r.rno === rno
@@ -664,7 +664,7 @@ function renderHistory() {
 function editRec(id) {
   const r = recs.find(x => x.id === id);
   if (!r) return;
-  editId = id;
+  editId = Number(id);
   document.getElementById('f-date').value = r.date || '';
   document.getElementById('f-course').value = r.course || '';
   document.getElementById('f-grade').value = r.grade || '';
