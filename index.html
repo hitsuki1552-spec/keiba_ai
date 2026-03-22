@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -701,30 +700,20 @@ function roiVal(n, pay) {
 }
 
 // 馬連集計: レース単位。印付き馬に1着と2着の両方がいれば的中
-function calcUren(recFilter) {
-  const st = {};
-  OSHI.forEach(o => { st[o.s] = { n:0, hit:0, pay:0 }; });
-  const targetRecs = recFilter ? recs.filter(recFilter) : recs;
-  targetRecs.forEach(r => {
+function calcUren() {
+  let n = 0, hit = 0, pay = 0;
+  recs.forEach(r => {
     const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
+    if (horses.length === 0) return;
+    n++;
     const has1st = horses.some(h => parseInt(h.rank) === 1);
     const has2nd = horses.some(h => parseInt(h.rank) === 2);
-    const urenHit = has1st && has2nd; // 1着・2着が両方印付き馬にいる
-    const urenPay = parseFloat(r.uren) || 0;
-    // 各印ごとに集計（そのレースに該当印の馬がいれば n++）
-    const counted = new Set();
-    horses.forEach(h => {
-      if (counted.has(h.oshi)) return;
-      counted.add(h.oshi);
-      const s = st[h.oshi]; if (!s) return;
-      s.n++;
-      if (urenHit) {
-        s.hit++;
-        s.pay += urenPay;
-      }
-    });
+    if (has1st && has2nd) {
+      hit++;
+      pay += parseFloat(r.uren) || 0;
+    }
   });
-  return st;
+  return { n, hit, pay };
 }
 
 // 馬連 ◎軸流し集計
@@ -827,28 +816,12 @@ function renderStats() {
   ).length;
   const winRaceRate = totalRaces > 0 ? Math.round(winRaces / totalRaces * 100) : null;
 
-  // 馬連集計
-  const stUren = calcUren();
-  const urenTotN   = OSHI.reduce((a,o) => a+stUren[o.s].n, 0);
-  const urenTotHit = OSHI.reduce((a,o) => a+stUren[o.s].hit, 0);
-  const urenTotPay = OSHI.reduce((a,o) => a+stUren[o.s].pay, 0);
-  // 馬連回収率の分母はユニークレース数（重複しないよう）
-  const urenRaceCount = recs.filter(r => (r.horses||[]).filter(h=>(h.rank||'').trim()!=='除外').length > 0).length;
-  const urenROI = urenRaceCount > 0 ? Math.round(urenTotPay / (urenRaceCount * 100) * 100) : null;
-  const urenHitRaces = recs.filter(r => {
-    const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
-    return horses.some(h=>parseInt(h.rank)===1) && horses.some(h=>parseInt(h.rank)===2);
-  }).length;
-  const urenHitRate = totalRaces > 0 ? Math.round(urenHitRaces / totalRaces * 100) : null;
-
   document.getElementById('stat-summary').innerHTML = [
     ['登録レース数', recs.length, '登録中'],
     ['単勝的中率',   winRaceRate!==null ? winRaceRate+'%':'—', winRaces+'/'+totalRaces+' レース'],
     ['複勝的中率',   totN>0 ? Math.round(totHit/totN*100)+'%':'—', totHit+'/'+totN+' 回'],
-    ['馬連的中率',   urenHitRate!==null ? urenHitRate+'%':'—', urenHitRaces+'/'+totalRaces+' レース'],
     ['単勝回収率',   overallROI!==null  ? overallROI+'%':'—',  '100円均一'],
     ['複勝回収率',   overallFROI!==null ? overallFROI+'%':'—', '100円均一'],
-    ['馬連回収率',   urenROI!==null     ? urenROI+'%':'—',     '100円均一'],
   ].map(([l,v,s]) => `<div class="stat-card"><div class="lbl">${l}</div><div class="val">${v}</div><div class="sub">${s}</div></div>`).join('');
 
   // --- Per-oshi (all) ---
