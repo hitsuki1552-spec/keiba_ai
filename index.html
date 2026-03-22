@@ -65,7 +65,7 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 .horse-card.st-lose { border-color: #ccc; opacity: 0.65; }
 
 /* row layout inside horse card */
-.horse-main { display: grid; grid-template-columns: 110px 1fr 36px; gap: 8px; align-items: center; margin-bottom: 8px; }
+.horse-main { display: grid; grid-template-columns: 80px 1fr; gap: 8px; align-items: center; margin-bottom: 8px; }
 .horse-sub  { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: end; }
 
 .hit-badge {
@@ -164,6 +164,11 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 .sort-btn { padding: 6px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; background: var(--surface); color: var(--muted); touch-action: manipulation; transition: all 0.15s; }
 .sort-btn.active { background: var(--text); color: white; border-color: var(--text); }
 
+/* Oshi filter buttons */
+.oshi-filter-btn { display:inline-flex; align-items:center; justify-content:center; padding: 5px 10px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; touch-action: manipulation; transition: all 0.15s; font-size:13px; color:var(--muted); font-family:inherit; }
+.oshi-filter-btn.active { border-color: var(--text); background: var(--surface2); }
+.oshi-filter-btn[data-oshi].active { border-width: 2px; }
+
 /* Group header for sorted sections */
 .hist-group-header { font-size: 13px; font-weight: 700; color: var(--muted); padding: 6px 4px 8px; margin-top: 12px; border-bottom: 1.5px solid var(--border); margin-bottom: 8px; letter-spacing: 0.04em; }
 .hist-group-header:first-child { margin-top: 0; }
@@ -260,7 +265,16 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
         <span style="font-size:11px;color:var(--hint);text-transform:none;letter-spacing:0;font-weight:400"> — 着順入力で自動判定</span>
       </div>
       <div id="horse-list"></div>
-      <button class="btn btn-add" onclick="addHorse()">＋ 馬を追加</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">配当入力</div>
+      <div class="grid2">
+        <div class="field">
+          <label>馬連配当（円）</label>
+          <input type="text" id="f-uren" placeholder="1500" class="inp" inputmode="numeric">
+        </div>
+      </div>
     </div>
 
     <div class="btn-row">
@@ -274,13 +288,22 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
   <div id="tab-history" class="section">
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
       <span style="font-size:12px;color:var(--muted);font-weight:500">ソート：</span>
-      <button class="sort-btn active" onclick="setSort('date')">日付順</button>
-      <button class="sort-btn" onclick="setSort('course')">競馬場別</button>
-      <button class="sort-btn" onclick="setSort('month')">月別</button>
+      <button class="sort-btn active" onclick="setSort('date',this)">日付順</button>
+      <button class="sort-btn" onclick="setSort('course',this)">競馬場別</button>
+      <button class="sort-btn" onclick="setSort('month',this)">月別</button>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
       <input type="date" id="hist-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderHistory()">
       <button class="sort-btn" onclick="document.getElementById('hist-date-filter').value='';renderHistory()" style="white-space:nowrap;flex-shrink:0">全表示</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <span style="font-size:12px;color:var(--muted);font-weight:500">的中印：</span>
+      <button class="oshi-filter-btn active" onclick="setOshiFilter(null,this)">全て</button>
+      <button class="oshi-filter-btn" data-oshi="◎" onclick="setOshiFilter('◎',this)"><span class="oshi-chip oshi-hon" style="width:22px;height:22px;font-size:12px">◎</span></button>
+      <button class="oshi-filter-btn" data-oshi="○" onclick="setOshiFilter('○',this)"><span class="oshi-chip oshi-tai" style="width:22px;height:22px;font-size:12px">○</span></button>
+      <button class="oshi-filter-btn" data-oshi="▲" onclick="setOshiFilter('▲',this)"><span class="oshi-chip oshi-tan" style="width:22px;height:22px;font-size:12px">▲</span></button>
+      <button class="oshi-filter-btn" data-oshi="△" onclick="setOshiFilter('△',this)"><span class="oshi-chip oshi-ren" style="width:22px;height:22px;font-size:12px">△</span></button>
+      <button class="oshi-filter-btn" data-oshi="☆" onclick="setOshiFilter('☆',this)"><span class="oshi-chip oshi-ana" style="width:22px;height:22px;font-size:12px">☆</span></button>
     </div>
     <div id="hist-list"></div>
   </div>
@@ -291,6 +314,9 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 
     <div class="stat-section-title">印別 集計</div>
     <div class="oshi-stat-list" id="oshi-stat-list"></div>
+
+    <div class="stat-section-title">馬連 ◎軸 流し 比較</div>
+    <div id="uren-flow-list"></div>
 
     <div class="stat-section-title">オッズ10倍以下 限定集計（印別）</div>
     <div id="lowodds-list"></div>
@@ -326,16 +352,16 @@ let editId = null;
 try { recs = JSON.parse(localStorage.getItem('kb5') || '[]'); } catch(e) {}
 function persist() { try { localStorage.setItem('kb5', JSON.stringify(recs)); } catch(e) {} }
 
-window.onload = function() {
+document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
   OSHI.forEach(o => addHorse(o.s));
-};
+});
 
 function showTab(id, btn) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
-  btn.classList.add('active');
+  if (btn) btn.classList.add('active');
   if (id === 'history') renderHistory();
   if (id === 'stats') renderStats();
 }
@@ -343,6 +369,7 @@ function showTab(id, btn) {
 // ---- HORSE CARD ----
 function addHorse(defaultOshi, data) {
   data = data || {};
+  const oshi = data.oshi || defaultOshi;
   const wrap = document.getElementById('horse-list');
   const div = document.createElement('div');
   div.className = 'horse-card';
@@ -351,11 +378,10 @@ function addHorse(defaultOshi, data) {
     <div class="horse-main">
       <select class="oshi-select inp" style="font-weight:700;font-size:15px;padding:11px 8px"
               onchange="judgeCard(this.closest('.horse-card'))">
-        ${OSHI.map(o => `<option value="${o.s}"${(data.oshi||defaultOshi)===o.s?' selected':''}>${o.l}</option>`).join('')}
+        ${OSHI.map(o => `<option value="${o.s}"${o.s===oshi?' selected':''}>${o.l}</option>`).join('')}
       </select>
       <input type="text" placeholder="馬名" class="horse-name inp"
              value="${data.name||''}" oninput="judgeCard(this.closest('.horse-card'))">
-      <button class="remove-btn" onclick="this.closest('.horse-card').remove()">×</button>
     </div>
     <div class="horse-sub" style="grid-template-columns:1fr 1fr 1fr">
       <div class="field">
@@ -377,7 +403,6 @@ function addHorse(defaultOshi, data) {
       </div>
     </div>`;
   wrap.appendChild(div);
-  // apply saved rank color if editing
   if (data.rank) judgeCard(div);
 }
 
@@ -420,7 +445,7 @@ function judgeCard(card) {
 
 function getHorses() {
   return Array.from(document.querySelectorAll('.horse-card')).map(card => ({
-    oshi:  card.querySelector('.oshi-select').value,
+    oshi:  card.dataset.oshi,
     name:  card.querySelector('.horse-name').value.trim(),
     odds:  card.querySelector('.horse-odds').value,
     fuku:  card.querySelector('.horse-fuku').value,
@@ -458,18 +483,24 @@ function saveRecord() {
     date, course,
     grade: document.getElementById('f-grade').value,
     rno, race, horses,
+    uren: document.getElementById('f-uren').value,
   };
   if (editId) { recs = recs.map(r => r.id === editId ? rec : r); }
   else { recs.unshift(rec); }
   persist();
   editId = null;
   document.getElementById('edit-banner').style.display = 'none';
+  // 馬リストを◎〇▲△☆の初期状態に戻す
+  document.getElementById('horse-list').innerHTML = '';
+  OSHI.forEach(o => addHorse(o.s));
+  document.getElementById('f-uren').value = '';
   showMsg('✓ 保存しました（' + race + '）', 'success');
 }
 
 function clearForm() {
   document.getElementById('horse-list').innerHTML = '';
   OSHI.forEach(o => addHorse(o.s));
+  document.getElementById('f-uren').value = '';
   document.getElementById('edit-banner').style.display = 'none';
   editId = null;
   showMsg('');
@@ -483,20 +514,43 @@ function showMsg(txt, type) {
 
 // ---- HISTORY ----
 let histSort = 'date';
+let histOshiFilter = null;
 
-function setSort(mode) {
+function setSort(mode, btn) {
   histSort = mode;
   document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+  if (btn) btn.classList.add('active');
+  renderHistory();
+}
+
+function setOshiFilter(oshi, btn) {
+  histOshiFilter = oshi;
+  document.querySelectorAll('.oshi-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
   renderHistory();
 }
 
 function renderHistory() {
   const el = document.getElementById('hist-list');
   const filterDate = (document.getElementById('hist-date-filter')||{}).value || '';
-  const filtered = filterDate ? recs.filter(r => r.date === filterDate) : recs;
+  let filtered = filterDate ? recs.filter(r => r.date === filterDate) : recs;
+
+  // 印的中フィルター：指定印が1着の馬を含むレースのみ
+  if (histOshiFilter) {
+    filtered = filtered.filter(r =>
+      (r.horses||[]).some(h =>
+        h.oshi === histOshiFilter &&
+        (h.rank||'').trim() !== '除外' &&
+        parseInt(h.rank) === 1
+      )
+    );
+  }
+
   if (!filtered.length) {
-    el.innerHTML = '<div class="empty-state">' + (filterDate ? 'この日付のデータはありません' : 'まだデータがありません') + '</div>';
+    const msg = histOshiFilter
+      ? `${histOshiFilter}が1着的中したレースはありません`
+      : (filterDate ? 'この日付のデータはありません' : 'まだデータがありません');
+    el.innerHTML = `<div class="empty-state">${msg}</div>`;
     return;
   }
 
@@ -526,7 +580,7 @@ function renderHistory() {
     const hasResult = (r.horses||[]).some(h => h.rank);
     const winHorse = (r.horses||[]).find(h => parseInt(h.rank)===1);
     const summaryTxt = hasResult
-      ? (winHorse ? `1着: ${winHorse.name}${winHorse.odds ? '（'+winHorse.odds+'倍）' : ''}` : '結果入力あり（1着なし）')
+      ? (winHorse ? `1着: ${winHorse.name}${winHorse.odds ? '（'+winHorse.odds+'倍）' : ''}${r.uren ? '　馬連: '+r.uren+'円' : ''}` : `結果入力あり（1着なし）${r.uren ? '　馬連: '+r.uren+'円' : ''}`)
       : null;
     return `<div class="hist-item">
       <div class="hist-head"><div>
@@ -596,6 +650,7 @@ function editRec(id) {
   document.getElementById('f-grade').value = r.grade || '';
   document.getElementById('f-rno').value = r.rno || '';
   document.getElementById('f-race').value = r.race || '';
+  document.getElementById('f-uren').value = r.uren || '';
   document.getElementById('horse-list').innerHTML = '';
   (r.horses||[]).forEach(h => addHorse(h.oshi, h));
   document.getElementById('edit-banner').style.display = 'block';
@@ -642,6 +697,62 @@ function roiColor(roi) {
 }
 function roiVal(n, pay) {
   return n > 0 ? Math.round(pay / (n * 100) * 100) : null;
+}
+
+// 馬連集計: レース単位。印付き馬に1着と2着の両方がいれば的中
+function calcUren(recFilter) {
+  const st = {};
+  OSHI.forEach(o => { st[o.s] = { n:0, hit:0, pay:0 }; });
+  const targetRecs = recFilter ? recs.filter(recFilter) : recs;
+  targetRecs.forEach(r => {
+    const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
+    const has1st = horses.some(h => parseInt(h.rank) === 1);
+    const has2nd = horses.some(h => parseInt(h.rank) === 2);
+    const urenHit = has1st && has2nd; // 1着・2着が両方印付き馬にいる
+    const urenPay = parseFloat(r.uren) || 0;
+    // 各印ごとに集計（そのレースに該当印の馬がいれば n++）
+    const counted = new Set();
+    horses.forEach(h => {
+      if (counted.has(h.oshi)) return;
+      counted.add(h.oshi);
+      const s = st[h.oshi]; if (!s) return;
+      s.n++;
+      if (urenHit) {
+        s.hit++;
+        s.pay += urenPay;
+      }
+    });
+  });
+  return st;
+}
+
+// 馬連 ◎軸流し集計
+// partners: 相手印の配列 例 ['○'] ['○','▲'] など
+function calcUrenFlow(partners) {
+  let n = 0, hit = 0, pay = 0;
+  recs.forEach(r => {
+    const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
+    // ◎の馬が1着か2着にいるか
+    const honHit = horses.some(h => h.oshi === '◎' && (parseInt(h.rank) === 1 || parseInt(h.rank) === 2));
+    // 相手印のいずれかの馬が1着か2着にいるか
+    const partnerHit = horses.some(h => partners.includes(h.oshi) && (parseInt(h.rank) === 1 || parseInt(h.rank) === 2));
+    // ◎と相手が両方1・2着に入っているかつ別々の着順
+    const rank1horses = horses.filter(h => parseInt(h.rank) === 1);
+    const rank2horses = horses.filter(h => parseInt(h.rank) === 2);
+    const honIn1or2 = rank1horses.some(h => h.oshi === '◎') || rank2horses.some(h => h.oshi === '◎');
+    const partnerIn1or2 = rank1horses.some(h => partners.includes(h.oshi)) || rank2horses.some(h => partners.includes(h.oshi));
+    // ◎と相手が同じ着順でないこと（1着と2着に分かれて入っている）
+    const urenPay = parseFloat(r.uren) || 0;
+    // 対象レースかどうか（◎を持つ馬がいるレースのみ）
+    const hasHon = horses.some(h => h.oshi === '◎');
+    if (!hasHon) return;
+    n++;
+    if (honIn1or2 && partnerIn1or2) {
+      hit++;
+      pay += urenPay;
+    }
+  });
+  return { n, hit, pay };
 }
 
 // Build a group-block card with a header (total ROI) + per-oshi rows
@@ -708,39 +819,60 @@ function renderStats() {
   const overallROI  = roiVal(totN, totPay);
   const overallFROI = roiVal(totN, totFuku);
 
-  // 単勝的中率: レース単位（そのレースで1着の馬が1頭でもあれば的中）
+  // 単勝的中率: レース単位
   const totalRaces = recs.length;
   const winRaces = recs.filter(r =>
     (r.horses||[]).some(h => (h.rank||'').trim() !== '除外' && parseInt(h.rank) === 1)
   ).length;
   const winRaceRate = totalRaces > 0 ? Math.round(winRaces / totalRaces * 100) : null;
 
+  // 馬連集計
+  const stUren = calcUren();
+  const urenTotN   = OSHI.reduce((a,o) => a+stUren[o.s].n, 0);
+  const urenTotHit = OSHI.reduce((a,o) => a+stUren[o.s].hit, 0);
+  const urenTotPay = OSHI.reduce((a,o) => a+stUren[o.s].pay, 0);
+  // 馬連回収率の分母はユニークレース数（重複しないよう）
+  const urenRaceCount = recs.filter(r => (r.horses||[]).filter(h=>(h.rank||'').trim()!=='除外').length > 0).length;
+  const urenROI = urenRaceCount > 0 ? Math.round(urenTotPay / (urenRaceCount * 100) * 100) : null;
+  const urenHitRaces = recs.filter(r => {
+    const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
+    return horses.some(h=>parseInt(h.rank)===1) && horses.some(h=>parseInt(h.rank)===2);
+  }).length;
+  const urenHitRate = totalRaces > 0 ? Math.round(urenHitRaces / totalRaces * 100) : null;
+
   document.getElementById('stat-summary').innerHTML = [
     ['登録レース数', recs.length, '登録中'],
     ['単勝的中率',   winRaceRate!==null ? winRaceRate+'%':'—', winRaces+'/'+totalRaces+' レース'],
     ['複勝的中率',   totN>0 ? Math.round(totHit/totN*100)+'%':'—', totHit+'/'+totN+' 回'],
+    ['馬連的中率',   urenHitRate!==null ? urenHitRate+'%':'—', urenHitRaces+'/'+totalRaces+' レース'],
     ['単勝回収率',   overallROI!==null  ? overallROI+'%':'—',  '100円均一'],
     ['複勝回収率',   overallFROI!==null ? overallFROI+'%':'—', '100円均一'],
+    ['馬連回収率',   urenROI!==null     ? urenROI+'%':'—',     '100円均一'],
   ].map(([l,v,s]) => `<div class="stat-card"><div class="lbl">${l}</div><div class="val">${v}</div><div class="sub">${s}</div></div>`).join('');
 
   // --- Per-oshi (all) ---
   document.getElementById('oshi-stat-list').innerHTML = OSHI.map(o => {
     const s     = st[o.s];
+    const su    = stUren[o.s];
     const roi   = roiVal(s.n, s.tanPay);
     const froi  = roiVal(s.n, s.fukuPay);
+    const uroi  = su.n > 0 ? Math.round(su.pay / (su.n * 100) * 100) : null;
     const rc    = roiColor(roi);
     const frc   = roiColor(froi);
+    const urc   = roiColor(uroi);
     const wr    = s.n > 0 ? Math.round(s.win/s.n*100)  : 0;
     const hr    = s.n > 0 ? Math.round(s.hit3/s.n*100) : 0;
+    const ur    = su.n > 0 ? Math.round(su.hit/su.n*100) : 0;
     return `<div class="oshi-stat-row">
       <span class="oshi-chip ${o.cls}" style="width:28px;height:28px;font-size:14px">${o.s}</span>
       <div class="oshi-stat-info">
         <div class="oshi-stat-name">${o.l}</div>
-        <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　複勝${s.hit3}回(${hr}%)</div>
+        <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　複勝${s.hit3}回(${hr}%)　馬連${su.hit}回(${ur}%)</div>
       </div>
       <div style="text-align:right;display:flex;flex-direction:column;gap:2px">
-        <div><span class="oshi-roi" style="display:inline"><span class="roi-val ${rc}" style="font-size:18px">${roi!==null ? roi+'%':'—'}</span></span> <span style="font-size:10px;color:var(--hint)">単勝</span></div>
-        <div><span class="oshi-roi" style="display:inline"><span class="roi-val ${frc}" style="font-size:18px">${froi!==null ? froi+'%':'—'}</span></span> <span style="font-size:10px;color:var(--hint)">複勝</span></div>
+        <div><span class="roi-val ${rc}" style="font-size:16px;font-weight:700">${roi!==null ? roi+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">単勝</span></div>
+        <div><span class="roi-val ${frc}" style="font-size:16px;font-weight:700">${froi!==null ? froi+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">複勝</span></div>
+        <div><span class="roi-val ${urc}" style="font-size:16px;font-weight:700">${uroi!==null ? uroi+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">馬連</span></div>
       </div>
     </div>`;
   }).join('');
@@ -783,6 +915,33 @@ function renderStats() {
         if (total === 0) return '';
         return buildGroupBlock(grade, 'グレード', stG);
       }).join('');
+
+  // --- 馬連 ◎軸流し比較 ---
+  const flowPatterns = [
+    { label: '◎ → ○',       partners: ['○'] },
+    { label: '◎ → ○▲',     partners: ['○','▲'] },
+    { label: '◎ → ○▲△',   partners: ['○','▲','△'] },
+    { label: '◎ → ○▲△☆', partners: ['○','▲','△','☆'] },
+  ];
+  const flowRows = flowPatterns.map(p => {
+    const f = calcUrenFlow(p.partners);
+    const roi = f.n > 0 ? Math.round(f.pay / (f.n * 100) * 100) : null;
+    const hitRate = f.n > 0 ? Math.round(f.hit / f.n * 100) : 0;
+    const rc = roiColor(roi);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid var(--border)">
+      <div style="font-size:14px;font-weight:700;min-width:110px">${p.label}</div>
+      <div style="flex:1;font-size:12px;color:var(--hint)">${f.n}R　的中${f.hit}R（${hitRate}%）</div>
+      <div style="text-align:right">
+        <div style="font-size:20px;font-weight:700" class="${rc}">${roi!==null ? roi+'%':'—'}</div>
+        <div style="font-size:11px;color:var(--hint)">馬連回収率</div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('uren-flow-list').innerHTML =
+    `<div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:14px">
+      <div style="background:var(--surface2);padding:8px 14px;font-size:12px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">◎が1着or2着に入り、相手印も1着or2着に入った場合を的中とする</div>
+      ${flowRows || '<div style="padding:14px;font-size:13px;color:var(--hint)">データなし</div>'}
+    </div>`;
 
   renderDateStats();
 }
