@@ -315,6 +315,13 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
     <div class="stat-section-title">印別 集計</div>
     <div class="oshi-stat-list" id="oshi-stat-list"></div>
 
+    <div class="stat-section-title">日付別 印別回収率</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="date" id="stats-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderDateStats()">
+      <button class="sort-btn" onclick="document.getElementById('stats-date-filter').value='';renderDateStats()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
+    <div id="date-stat-block"></div>
+
     <div class="stat-section-title">馬連 ◎軸 流し 比較</div>
     <div id="uren-flow-list"></div>
 
@@ -326,13 +333,6 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 
     <div class="stat-section-title">グレード別 回収率（印別）</div>
     <div id="grade-stat-list"></div>
-
-    <div class="stat-section-title">日付別 印別回収率</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-      <input type="date" id="stats-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderDateStats()">
-      <button class="sort-btn" onclick="document.getElementById('stats-date-filter').value='';renderDateStats()" style="white-space:nowrap;flex-shrink:0">クリア</button>
-    </div>
-    <div id="date-stat-block"></div>
   </div>
 
 </div>
@@ -853,26 +853,21 @@ function renderStats() {
   // --- Per-oshi (all) ---
   document.getElementById('oshi-stat-list').innerHTML = OSHI.map(o => {
     const s     = st[o.s];
-    const su    = stUren[o.s];
     const roi   = roiVal(s.n, s.tanPay);
     const froi  = roiVal(s.n, s.fukuPay);
-    const uroi  = su.n > 0 ? Math.round(su.pay / (su.n * 100) * 100) : null;
     const rc    = roiColor(roi);
     const frc   = roiColor(froi);
-    const urc   = roiColor(uroi);
     const wr    = s.n > 0 ? Math.round(s.win/s.n*100)  : 0;
     const hr    = s.n > 0 ? Math.round(s.hit3/s.n*100) : 0;
-    const ur    = su.n > 0 ? Math.round(su.hit/su.n*100) : 0;
     return `<div class="oshi-stat-row">
       <span class="oshi-chip ${o.cls}" style="width:28px;height:28px;font-size:14px">${o.s}</span>
       <div class="oshi-stat-info">
         <div class="oshi-stat-name">${o.l}</div>
-        <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　複勝${s.hit3}回(${hr}%)　馬連${su.hit}回(${ur}%)</div>
+        <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　複勝${s.hit3}回(${hr}%)</div>
       </div>
       <div style="text-align:right;display:flex;flex-direction:column;gap:2px">
         <div><span class="roi-val ${rc}" style="font-size:16px;font-weight:700">${roi!==null ? roi+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">単勝</span></div>
         <div><span class="roi-val ${frc}" style="font-size:16px;font-weight:700">${froi!==null ? froi+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">複勝</span></div>
-        <div><span class="roi-val ${urc}" style="font-size:16px;font-weight:700">${uroi!==null ? uroi+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">馬連</span></div>
       </div>
     </div>`;
   }).join('');
@@ -1013,3 +1008,4 @@ function renderDateStats() {
 </script>
 </body>
 </html>
+
