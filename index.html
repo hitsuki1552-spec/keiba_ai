@@ -169,6 +169,13 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 .oshi-filter-btn.active { border-color: var(--text); background: var(--surface2); }
 .oshi-filter-btn[data-oshi].active { border-width: 2px; }
 
+/* Race status grid */
+.race-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+.race-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius-sm); padding: 5px 2px; font-size: 11px; font-weight: 700; min-height: 44px; border: 1.5px solid; cursor: default; }
+.race-cell.done { background: #dffde8; border-color: #1a6b3a; color: #1a6b3a; }
+.race-cell.empty { background: var(--surface2); border-color: var(--border); color: var(--hint); }
+.race-cell .race-name { font-size: 10px; font-weight: 400; margin-top: 2px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+
 /* Group header for sorted sections */
 .hist-group-header { font-size: 13px; font-weight: 700; color: var(--muted); padding: 6px 4px 8px; margin-top: 12px; border-bottom: 1.5px solid var(--border); margin-bottom: 8px; letter-spacing: 0.04em; }
 .hist-group-header:first-child { margin-top: 0; }
@@ -296,6 +303,7 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
       <input type="date" id="hist-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderHistory()">
       <button class="sort-btn" onclick="document.getElementById('hist-date-filter').value='';renderHistory()" style="white-space:nowrap;flex-shrink:0">全表示</button>
     </div>
+    <div id="race-grid" style="margin-bottom:12px"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
       <span style="font-size:12px;color:var(--muted);font-weight:500">的中印：</span>
       <button class="oshi-filter-btn active" onclick="setOshiFilter(null,this)">全て</button>
@@ -585,6 +593,25 @@ function setUrenFilter(hit, btn) {
 function renderHistory() {
   const el = document.getElementById('hist-list');
   const filterDate = (document.getElementById('hist-date-filter')||{}).value || '';
+
+  // 登録状況グリッド（日付選択時のみ表示）
+  const gridEl = document.getElementById('race-grid');
+  if (gridEl) {
+    if (filterDate) {
+      const RNO = ['1R','2R','3R','4R','5R','6R','7R','8R','9R','10R','11R','12R'];
+      const dayRecs = recs.filter(r => r.date === filterDate);
+      gridEl.innerHTML = '<div class="race-grid">' + RNO.map(rno => {
+        const rec = dayRecs.find(r => r.rno === rno);
+        if (rec) {
+          return `<div class="race-cell done"><span>${rno}</span><span class="race-name">${rec.race}</span></div>`;
+        } else {
+          return `<div class="race-cell empty"><span>${rno}</span><span class="race-name">未登録</span></div>`;
+        }
+      }).join('') + '</div>';
+    } else {
+      gridEl.innerHTML = '';
+    }
+  }
   let filtered = filterDate ? recs.filter(r => r.date === filterDate) : recs;
 
   // 印的中フィルター
@@ -1137,4 +1164,5 @@ function renderGradeStats() {
 </script>
 </body>
 </html>
+
 
