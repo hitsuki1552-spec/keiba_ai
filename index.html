@@ -296,7 +296,7 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
       <input type="date" id="hist-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderHistory()">
       <button class="sort-btn" onclick="document.getElementById('hist-date-filter').value='';renderHistory()" style="white-space:nowrap;flex-shrink:0">全表示</button>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
       <span style="font-size:12px;color:var(--muted);font-weight:500">的中印：</span>
       <button class="oshi-filter-btn active" onclick="setOshiFilter(null,this)">全て</button>
       <button class="oshi-filter-btn" data-oshi="◎" onclick="setOshiFilter('◎',this)"><span class="oshi-chip oshi-hon" style="width:22px;height:22px;font-size:12px">◎</span></button>
@@ -304,6 +304,11 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
       <button class="oshi-filter-btn" data-oshi="▲" onclick="setOshiFilter('▲',this)"><span class="oshi-chip oshi-tan" style="width:22px;height:22px;font-size:12px">▲</span></button>
       <button class="oshi-filter-btn" data-oshi="△" onclick="setOshiFilter('△',this)"><span class="oshi-chip oshi-ren" style="width:22px;height:22px;font-size:12px">△</span></button>
       <button class="oshi-filter-btn" data-oshi="☆" onclick="setOshiFilter('☆',this)"><span class="oshi-chip oshi-ana" style="width:22px;height:22px;font-size:12px">☆</span></button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <span style="font-size:12px;color:var(--muted);font-weight:500">馬連：</span>
+      <button class="oshi-filter-btn active" id="uren-filter-all" onclick="setUrenFilter(false,this)">全て</button>
+      <button class="oshi-filter-btn" id="uren-filter-hit" onclick="setUrenFilter(true,this)">的中のみ</button>
     </div>
     <div id="hist-list"></div>
   </div>
@@ -554,6 +559,7 @@ function showMsg(txt, type) {
 // ---- HISTORY ----
 let histSort = 'date';
 let histOshiFilter = null;
+let histUrenFilter = false;
 
 function setSort(mode, btn) {
   histSort = mode;
@@ -569,12 +575,19 @@ function setOshiFilter(oshi, btn) {
   renderHistory();
 }
 
+function setUrenFilter(hit, btn) {
+  histUrenFilter = hit;
+  document.querySelectorAll('#uren-filter-all, #uren-filter-hit').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderHistory();
+}
+
 function renderHistory() {
   const el = document.getElementById('hist-list');
   const filterDate = (document.getElementById('hist-date-filter')||{}).value || '';
   let filtered = filterDate ? recs.filter(r => r.date === filterDate) : recs;
 
-  // 印的中フィルター：指定印が1着の馬を含むレースのみ
+  // 印的中フィルター
   if (histOshiFilter) {
     filtered = filtered.filter(r =>
       (r.horses||[]).some(h =>
@@ -585,9 +598,19 @@ function renderHistory() {
     );
   }
 
+  // 馬連的中フィルター
+  if (histUrenFilter) {
+    filtered = filtered.filter(r => {
+      const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
+      return horses.some(h => parseInt(h.rank) === 1) &&
+             horses.some(h => parseInt(h.rank) === 2) &&
+             parseFloat(r.uren) > 0;
+    });
+  }
+
   if (!filtered.length) {
-    const msg = histOshiFilter
-      ? `${histOshiFilter}が1着的中したレースはありません`
+    const msg = histUrenFilter ? '馬連が的中したレースはありません'
+      : histOshiFilter ? `${histOshiFilter}が1着的中したレースはありません`
       : (filterDate ? 'この日付のデータはありません' : 'まだデータがありません');
     el.innerHTML = `<div class="empty-state">${msg}</div>`;
     return;
@@ -1114,3 +1137,4 @@ function renderGradeStats() {
 </script>
 </body>
 </html>
+
