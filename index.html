@@ -356,8 +356,29 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
     </div>
     <div id="date-stat-block"></div>
 
+    <div class="stat-section-title">月別 印別回収率</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="month" id="stats-month-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderMonthStats()">
+      <button class="sort-btn" onclick="document.getElementById('stats-month-filter').value='';renderMonthStats()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
+    <div id="month-stat-block"></div>
+
     <div class="stat-section-title">馬連 ◎軸 流し 比較</div>
     <div id="uren-flow-list"></div>
+
+    <div class="stat-section-title">日付別 馬連 ◎軸 流し 比較</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="date" id="stats-uren-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderDateUrenFlow()">
+      <button class="sort-btn" onclick="document.getElementById('stats-uren-date-filter').value='';renderDateUrenFlow()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
+    <div id="date-uren-flow-block"></div>
+
+    <div class="stat-section-title">月別 馬連 ◎軸 流し 比較</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="month" id="stats-uren-month-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderMonthUrenFlow()">
+      <button class="sort-btn" onclick="document.getElementById('stats-uren-month-filter').value='';renderMonthUrenFlow()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
+    <div id="month-uren-flow-block"></div>
 
     <div class="stat-section-title">オッズ10倍以下 限定集計（印別）</div>
     <div id="lowodds-list"></div>
@@ -1014,6 +1035,191 @@ function renderStats() {
     `<div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:14px">
       <div style="background:var(--surface2);padding:8px 14px;font-size:12px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">◎が1着or2着に入り、相手印も1着or2着に入った場合を的中とする</div>
       ${flowRows || '<div style="padding:14px;font-size:13px;color:var(--hint)">データなし</div>'}
+    </div>`;
+
+  renderDateUrenFlow();
+  renderMonthStats();
+  renderMonthUrenFlow();
+}
+
+function renderMonthStats() {
+  const el = document.getElementById('month-stat-block');
+  const month = (document.getElementById('stats-month-filter')||{}).value || '';
+
+  if (!month) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">月を選択すると印別回収率を表示します</div>';
+    return;
+  }
+
+  const monthRecs = recs.filter(r => (r.date||'').slice(0,7) === month);
+  if (!monthRecs.length) { el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">この月のデータなし</div>'; return; }
+
+  const stM = calcSt((h, r) => (r.date||'').slice(0,7) === month);
+  const totN = OSHI.reduce((a,o) => a+stM[o.s].n, 0);
+  if (totN === 0) { el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">集計データなし</div>'; return; }
+
+  const totPay  = OSHI.reduce((a,o) => a+stM[o.s].tanPay, 0);
+  const totFuku = OSHI.reduce((a,o) => a+stM[o.s].fukuPay, 0);
+  const roi  = roiVal(totN, totPay);
+  const froi = roiVal(totN, totFuku);
+  const monthLabel = month.replace('-', '年') + '月';
+
+  const rows = OSHI.map(o => {
+    const s = stM[o.s]; if (s.n === 0) return '';
+    const r  = roiVal(s.n, s.tanPay);
+    const fr = roiVal(s.n, s.fukuPay);
+    const wr = s.n > 0 ? Math.round(s.win/s.n*100) : 0;
+    const hr = s.n > 0 ? Math.round(s.hit3/s.n*100) : 0;
+    return `<div class="oshi-stat-row">
+      <span class="oshi-chip ${o.cls}" style="width:28px;height:28px;font-size:14px">${o.s}</span>
+      <div class="oshi-stat-info">
+        <div class="oshi-stat-name">${o.l}</div>
+        <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　複勝${s.hit3}回(${hr}%)</div>
+      </div>
+      <div style="text-align:right;display:flex;flex-direction:column;gap:2px">
+        <div><span class="roi-val ${roiColor(r)}" style="font-size:18px;font-weight:700">${r!==null?r+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">単勝</span></div>
+        <div><span class="roi-val ${roiColor(fr)}" style="font-size:18px;font-weight:700">${fr!==null?fr+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">複勝</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:8px">
+      <div>
+        <div style="font-size:14px;font-weight:700">${monthLabel}</div>
+        <div style="font-size:12px;color:var(--hint);margin-top:2px">${monthRecs.length}レース　${totN}頭</div>
+      </div>
+      <div style="text-align:right;display:flex;gap:14px">
+        <div><div style="font-size:20px;font-weight:700" class="${roiColor(roi)}">${roi!==null?roi+'%':'—'}</div><div style="font-size:11px;color:var(--hint)">単勝回収率</div></div>
+        <div><div style="font-size:20px;font-weight:700" class="${roiColor(froi)}">${froi!==null?froi+'%':'—'}</div><div style="font-size:11px;color:var(--hint)">複勝回収率</div></div>
+      </div>
+    </div>
+    <div class="oshi-stat-list">${rows || '<div style="padding:12px 14px;font-size:13px;color:var(--hint)">データなし</div>'}</div>`;
+}
+
+function renderMonthUrenFlow() {
+  const el = document.getElementById('month-uren-flow-block');
+  const month = (document.getElementById('stats-uren-month-filter')||{}).value || '';
+
+  if (!month) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">月を選択するとその月の◎軸流し回収率を表示します</div>';
+    return;
+  }
+
+  const monthRecs = recs.filter(r => (r.date||'').slice(0,7) === month);
+  if (!monthRecs.length) { el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">この月のデータなし</div>'; return; }
+
+  function calcFlow(partners) {
+    let n = 0, hit = 0, pay = 0;
+    monthRecs.forEach(r => {
+      const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
+      if (!horses.some(h => h.oshi === '◎')) return;
+      n++;
+      const r1 = horses.filter(h => parseInt(h.rank) === 1);
+      const r2 = horses.filter(h => parseInt(h.rank) === 2);
+      const honIn = r1.some(h => h.oshi === '◎') || r2.some(h => h.oshi === '◎');
+      const partIn = r1.some(h => partners.includes(h.oshi)) || r2.some(h => partners.includes(h.oshi));
+      if (honIn && partIn) { hit++; pay += parseFloat(r.uren) || 0; }
+    });
+    return { n, hit, pay };
+  }
+
+  const patterns = [
+    { label: '◎ → ○',       partners: ['○'] },
+    { label: '◎ → ○▲',     partners: ['○','▲'] },
+    { label: '◎ → ○▲△',   partners: ['○','▲','△'] },
+    { label: '◎ → ○▲△☆', partners: ['○','▲','△','☆'] },
+  ];
+
+  const monthLabel = month.replace('-', '年') + '月';
+  const rows = patterns.map(p => {
+    const f = calcFlow(p.partners);
+    const bet = p.partners.length;
+    const roi = f.n > 0 ? Math.round(f.pay / (f.n * bet * 100) * 100) : null;
+    const hitRate = f.n > 0 ? Math.round(f.hit / f.n * 100) : 0;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid var(--border)">
+      <div>
+        <div style="font-size:14px;font-weight:700">${p.label}</div>
+        <div style="font-size:11px;color:var(--hint);margin-top:2px">${bet}点買い　${f.n}R　的中${f.hit}R（${hitRate}%）</div>
+      </div>
+      <div style="flex:1"></div>
+      <div style="text-align:right">
+        <div style="font-size:20px;font-weight:700" class="${roiColor(roi)}">${roi!==null?roi+'%':'—'}</div>
+        <div style="font-size:11px;color:var(--hint)">馬連回収率</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:14px">
+      <div style="background:var(--surface2);padding:8px 14px;font-size:12px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">${monthLabel}　${monthRecs.length}レース</div>
+      ${rows || '<div style="padding:14px;font-size:13px;color:var(--hint)">データなし</div>'}
+    </div>`;
+}
+
+function renderDateUrenFlow() {
+  const el = document.getElementById('date-uren-flow-block');
+  const date = (document.getElementById('stats-uren-date-filter')||{}).value || '';
+
+  if (!date) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">日付を選択するとその日の◎軸流し回収率を表示します</div>';
+    return;
+  }
+
+  const dayRecs = recs.filter(r => r.date === date);
+  if (!dayRecs.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">この日付のデータなし</div>';
+    return;
+  }
+
+  // 日付絞り込み版 calcUrenFlow
+  function calcUrenFlowDay(partners) {
+    let n = 0, hit = 0, pay = 0;
+    dayRecs.forEach(r => {
+      const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
+      const hasHon = horses.some(h => h.oshi === '◎');
+      if (!hasHon) return;
+      n++;
+      const rank1 = horses.filter(h => parseInt(h.rank) === 1);
+      const rank2 = horses.filter(h => parseInt(h.rank) === 2);
+      const honIn = rank1.some(h => h.oshi === '◎') || rank2.some(h => h.oshi === '◎');
+      const partIn = rank1.some(h => partners.includes(h.oshi)) || rank2.some(h => partners.includes(h.oshi));
+      if (honIn && partIn) { hit++; pay += parseFloat(r.uren) || 0; }
+    });
+    return { n, hit, pay };
+  }
+
+  const flowPatterns = [
+    { label: '◎ → ○',       partners: ['○'] },
+    { label: '◎ → ○▲',     partners: ['○','▲'] },
+    { label: '◎ → ○▲△',   partners: ['○','▲','△'] },
+    { label: '◎ → ○▲△☆', partners: ['○','▲','△','☆'] },
+  ];
+
+  const dateLabel = date.replace(/-/g, '/');
+  const rows = flowPatterns.map(p => {
+    const f = calcUrenFlowDay(p.partners);
+    const betPerRace = p.partners.length;
+    const roi = f.n > 0 ? Math.round(f.pay / (f.n * betPerRace * 100) * 100) : null;
+    const hitRate = f.n > 0 ? Math.round(f.hit / f.n * 100) : 0;
+    const rc = roiColor(roi);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid var(--border)">
+      <div>
+        <div style="font-size:14px;font-weight:700">${p.label}</div>
+        <div style="font-size:11px;color:var(--hint);margin-top:2px">${betPerRace}点買い　${f.n}R　的中${f.hit}R（${hitRate}%）</div>
+      </div>
+      <div style="flex:1"></div>
+      <div style="text-align:right">
+        <div style="font-size:20px;font-weight:700" class="${rc}">${roi!==null ? roi+'%':'—'}</div>
+        <div style="font-size:11px;color:var(--hint)">馬連回収率</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:14px">
+      <div style="background:var(--surface2);padding:8px 14px;font-size:12px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">${dateLabel}　${dayRecs.length}レース</div>
+      ${rows || '<div style="padding:14px;font-size:13px;color:var(--hint)">データなし</div>'}
     </div>`;
 }
 
