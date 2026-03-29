@@ -630,8 +630,7 @@ function renderHistory() {
     filtered = filtered.filter(r => {
       const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
       return horses.some(h => parseInt(h.rank) === 1) &&
-             horses.some(h => parseInt(h.rank) === 2) &&
-             parseFloat(r.uren) > 0;
+             horses.some(h => parseInt(h.rank) === 2);
     });
   }
 
@@ -1164,5 +1163,3 @@ function renderGradeStats() {
 </script>
 </body>
 </html>
-
-
