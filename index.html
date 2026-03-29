@@ -230,7 +230,7 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
       </div>
       <div class="grid2" style="margin-bottom:10px">
         <div class="field"><label>グレード</label>
-          <select id="f-grade" class="inp">
+          <select id="f-grade" class="inp" onchange="autoFillRaceName(this.value)">
             <option value="">選択</option>
             <option value="G1">G1</option>
             <option value="G2">G2</option>
@@ -437,6 +437,14 @@ function showTab(id, btn) {
   if (btn) btn.classList.add('active');
   if (id === 'history') renderHistory();
   if (id === 'stats') renderStats();
+}
+
+function autoFillRaceName(grade) {
+  const map = { '新馬': '新馬戦', '未勝利': '未勝利戦', '1勝': '1勝クラス', '2勝': '2勝クラス', '3勝': '3勝クラス' };
+  const auto = map[grade];
+  if (!auto) return;
+  const el = document.getElementById('f-race');
+  if (!el.value) el.value = auto;
 }
 
 // ---- HORSE CARD ----
