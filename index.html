@@ -299,9 +299,30 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
       <button class="sort-btn" onclick="setSort('course',this)">競馬場別</button>
       <button class="sort-btn" onclick="setSort('month',this)">月別</button>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
       <input type="date" id="hist-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderHistory()">
-      <button class="sort-btn" onclick="document.getElementById('hist-date-filter').value='';renderHistory()" style="white-space:nowrap;flex-shrink:0">全表示</button>
+      <button class="sort-btn" onclick="document.getElementById('hist-date-filter').value='';document.getElementById('hist-course-filter').value='';renderHistory()" style="white-space:nowrap;flex-shrink:0">全表示</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <select id="hist-course-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" onchange="renderHistory()">
+        <option value="">競馬場を選択</option>
+        <optgroup label="中央">
+          <option value="札幌">札幌</option>
+          <option value="函館">函館</option>
+          <option value="福島">福島</option>
+          <option value="新潟">新潟</option>
+          <option value="東京">東京</option>
+          <option value="中山">中山</option>
+          <option value="中京">中京</option>
+          <option value="京都">京都</option>
+          <option value="阪神">阪神</option>
+          <option value="小倉">小倉</option>
+        </optgroup>
+        <optgroup label="その他">
+          <option value="地方">地方</option>
+          <option value="海外">海外</option>
+        </optgroup>
+      </select>
     </div>
     <div id="race-grid" style="margin-bottom:12px"></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
@@ -593,26 +614,33 @@ function setUrenFilter(hit, btn) {
 function renderHistory() {
   const el = document.getElementById('hist-list');
   const filterDate = (document.getElementById('hist-date-filter')||{}).value || '';
+  const filterCourse = (document.getElementById('hist-course-filter')||{}).value || '';
 
-  // 登録状況グリッド（日付選択時のみ表示）
+  // 登録状況グリッド（日付＋競馬場が両方選択時のみ表示）
   const gridEl = document.getElementById('race-grid');
   if (gridEl) {
-    if (filterDate) {
+    if (filterDate && filterCourse) {
       const RNO = ['1R','2R','3R','4R','5R','6R','7R','8R','9R','10R','11R','12R'];
-      const dayRecs = recs.filter(r => r.date === filterDate);
-      gridEl.innerHTML = '<div class="race-grid">' + RNO.map(rno => {
-        const rec = dayRecs.find(r => r.rno === rno);
-        if (rec) {
-          return `<div class="race-cell done"><span>${rno}</span><span class="race-name">${rec.race}</span></div>`;
-        } else {
-          return `<div class="race-cell empty"><span>${rno}</span><span class="race-name">未登録</span></div>`;
-        }
-      }).join('') + '</div>';
+      const dayRecs = recs.filter(r => r.date === filterDate && r.course === filterCourse);
+      gridEl.innerHTML =
+        `<div style="font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px">${filterDate.replace(/-/g,'/')} ${filterCourse} の登録状況</div>` +
+        '<div class="race-grid">' + RNO.map(rno => {
+          const rec = dayRecs.find(r => r.rno === rno);
+          if (rec) {
+            return `<div class="race-cell done"><span>${rno}</span><span class="race-name">${rec.race}</span></div>`;
+          } else {
+            return `<div class="race-cell empty"><span>${rno}</span><span class="race-name">未登録</span></div>`;
+          }
+        }).join('') + '</div>';
+    } else if (filterDate && !filterCourse) {
+      gridEl.innerHTML = '<div style="font-size:12px;color:var(--hint);padding:2px 0">競馬場を選択すると登録状況を確認できます</div>';
     } else {
       gridEl.innerHTML = '';
     }
   }
-  let filtered = filterDate ? recs.filter(r => r.date === filterDate) : recs;
+  let filtered = recs;
+  if (filterDate)   filtered = filtered.filter(r => r.date === filterDate);
+  if (filterCourse) filtered = filtered.filter(r => r.course === filterCourse);
 
   // 印的中フィルター
   if (histOshiFilter) {
@@ -637,7 +665,8 @@ function renderHistory() {
   if (!filtered.length) {
     const msg = histUrenFilter ? '馬連が的中したレースはありません'
       : histOshiFilter ? `${histOshiFilter}が1着的中したレースはありません`
-      : (filterDate ? 'この日付のデータはありません' : 'まだデータがありません');
+      : (filterDate || filterCourse) ? '該当するデータはありません'
+      : 'まだデータがありません';
     el.innerHTML = `<div class="empty-state">${msg}</div>`;
     return;
   }
