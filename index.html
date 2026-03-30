@@ -31,8 +31,8 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 .header h1 { font-size: 16px; font-weight: 700; letter-spacing: 0.05em; }
 .header p { font-size: 11px; color: #aaa; margin-top: 1px; }
 
-.nav { display: flex; background: var(--text); padding: 0 16px 12px; gap: 8px; }
-.nav-btn { flex: 1; padding: 10px 0; border-radius: var(--radius-sm); border: none; font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+.nav { display: flex; flex-wrap: wrap; background: var(--text); padding: 0 16px 12px; gap: 8px; }
+.nav-btn { flex: 1; min-width: calc(33% - 8px); padding: 10px 0; border-radius: var(--radius-sm); border: none; font-family: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
 .nav-btn.active { background: var(--accent); color: var(--text); }
 .nav-btn:not(.active) { background: #2a2520; color: #888; }
 
@@ -191,6 +191,8 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
   <button class="nav-btn active" onclick="showTab('input',this)">予想入力</button>
   <button class="nav-btn" onclick="showTab('history',this)">履歴</button>
   <button class="nav-btn" onclick="showTab('stats',this)">集計</button>
+  <button class="nav-btn" onclick="showTab('datestat',this)">日付別</button>
+  <button class="nav-btn" onclick="showTab('monthstat',this)">月別</button>
 </div>
 
 <div class="content">
@@ -366,20 +368,6 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
     <div class="stat-section-title">馬連 ◎軸 流し 比較</div>
     <div id="uren-flow-list"></div>
 
-    <div class="stat-section-title">日付別 馬連 ◎軸 流し 比較</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-      <input type="date" id="stats-uren-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderDateUrenFlow()">
-      <button class="sort-btn" onclick="document.getElementById('stats-uren-date-filter').value='';renderDateUrenFlow()" style="white-space:nowrap;flex-shrink:0">クリア</button>
-    </div>
-    <div id="date-uren-flow-block"></div>
-
-    <div class="stat-section-title">月別 馬連 ◎軸 流し 比較</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-      <input type="month" id="stats-uren-month-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderMonthUrenFlow()">
-      <button class="sort-btn" onclick="document.getElementById('stats-uren-month-filter').value='';renderMonthUrenFlow()" style="white-space:nowrap;flex-shrink:0">クリア</button>
-    </div>
-    <div id="month-uren-flow-block"></div>
-
     <div class="stat-section-title">オッズ10倍以下 限定集計（印別）</div>
     <div id="lowodds-list"></div>
 
@@ -429,6 +417,40 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
     <div id="grade-stat-list"></div>
   </div>
 
+  <!-- DATE STAT TAB -->
+  <div id="tab-datestat" class="section">
+    <div class="stat-section-title">日付別 印別回収率</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="date" id="stats-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderDateStats()">
+      <button class="sort-btn" onclick="document.getElementById('stats-date-filter').value='';renderDateStats()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
+    <div id="date-stat-block"></div>
+
+    <div class="stat-section-title">日付別 馬連 ◎軸 流し 比較</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="date" id="stats-uren-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderDateUrenFlow()">
+      <button class="sort-btn" onclick="document.getElementById('stats-uren-date-filter').value='';renderDateUrenFlow()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
+    <div id="date-uren-flow-block"></div>
+  </div>
+
+  <!-- MONTH STAT TAB -->
+  <div id="tab-monthstat" class="section">
+    <div class="stat-section-title">月別 印別回収率</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="month" id="stats-month-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderMonthStats()">
+      <button class="sort-btn" onclick="document.getElementById('stats-month-filter').value='';renderMonthStats()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
+    <div id="month-stat-block"></div>
+
+    <div class="stat-section-title">月別 馬連 ◎軸 流し 比較</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="month" id="stats-uren-month-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderMonthUrenFlow()">
+      <button class="sort-btn" onclick="document.getElementById('stats-uren-month-filter').value='';renderMonthUrenFlow()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
+    <div id="month-uren-flow-block"></div>
+  </div>
+
 </div>
 
 <script>
@@ -458,6 +480,8 @@ function showTab(id, btn) {
   if (btn) btn.classList.add('active');
   if (id === 'history') renderHistory();
   if (id === 'stats') renderStats();
+  if (id === 'datestat') { renderDateStats(); renderDateUrenFlow(); }
+  if (id === 'monthstat') { renderMonthStats(); renderMonthUrenFlow(); }
 }
 
 function autoFillRaceName(grade) {
@@ -1004,7 +1028,6 @@ function renderStats() {
 
   renderCourseStats();
   renderGradeStats();
-  renderDateStats();
 
   const flowPatterns = [
     { label: '◎ → ○',       partners: ['○'] },
@@ -1036,10 +1059,6 @@ function renderStats() {
       <div style="background:var(--surface2);padding:8px 14px;font-size:12px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">◎が1着or2着に入り、相手印も1着or2着に入った場合を的中とする</div>
       ${flowRows || '<div style="padding:14px;font-size:13px;color:var(--hint)">データなし</div>'}
     </div>`;
-
-  renderDateUrenFlow();
-  renderMonthStats();
-  renderMonthUrenFlow();
 }
 
 function renderMonthStats() {
@@ -1406,3 +1425,4 @@ function renderGradeStats() {
 </script>
 </body>
 </html>
+
