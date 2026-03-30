@@ -351,20 +351,6 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
     <div class="stat-section-title">印別 集計</div>
     <div class="oshi-stat-list" id="oshi-stat-list"></div>
 
-    <div class="stat-section-title">日付別 印別回収率</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-      <input type="date" id="stats-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderDateStats()">
-      <button class="sort-btn" onclick="document.getElementById('stats-date-filter').value='';renderDateStats()" style="white-space:nowrap;flex-shrink:0">クリア</button>
-    </div>
-    <div id="date-stat-block"></div>
-
-    <div class="stat-section-title">月別 印別回収率</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-      <input type="month" id="stats-month-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderMonthStats()">
-      <button class="sort-btn" onclick="document.getElementById('stats-month-filter').value='';renderMonthStats()" style="white-space:nowrap;flex-shrink:0">クリア</button>
-    </div>
-    <div id="month-stat-block"></div>
-
     <div class="stat-section-title">馬連 ◎軸 流し 比較</div>
     <div id="uren-flow-list"></div>
 
