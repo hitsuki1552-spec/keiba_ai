@@ -248,7 +248,7 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
           </select>
         </div>
         <div class="field"><label>レース番号</label>
-          <select id="f-rno" class="inp">
+          <select id="f-rno" class="inp" onchange="document.getElementById('f-race').value=''">
             <option value="">選択</option>
             <option value="1R">1R</option>
             <option value="2R">2R</option>
