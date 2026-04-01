@@ -355,8 +355,19 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
     <div class="stat-section-title">馬連 ◎軸 流し 比較</div>
     <div id="uren-flow-list"></div>
 
-    <div class="stat-section-title">オッズ10倍以下 限定集計（印別）</div>
-    <div id="lowodds-list"></div>
+    <div class="stat-section-title">オッズ帯別 印別回収率</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <select id="stats-odds-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" onchange="renderOddsStats()">
+        <option value="">オッズ帯を選択</option>
+        <option value="1-5">1〜5倍</option>
+        <option value="5-10">5〜10倍</option>
+        <option value="10-20">10〜20倍</option>
+        <option value="20-50">20〜50倍</option>
+        <option value="50-">50倍以上</option>
+      </select>
+      <button class="sort-btn" onclick="document.getElementById('stats-odds-filter').value='';renderOddsStats()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
+    <div id="odds-stat-list"></div>
 
     <div class="stat-section-title">競馬場別 回収率（印別）</div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
@@ -1012,13 +1023,7 @@ function renderStats() {
     </div>`;
   }).join('');
 
-  // --- Low odds (≤10倍) 全印合計のみ ---
-  const stLow = calcSt(h => parseFloat(h.odds) > 0 && parseFloat(h.odds) <= 10);
-  const loTotal = OSHI.reduce((a,o) => a+stLow[o.s].n, 0);
-  document.getElementById('lowodds-list').innerHTML = loTotal === 0
-    ? '<div class="group-block"><div style="padding:16px 14px;font-size:13px;color:var(--hint)">オッズ10倍以下のデータなし</div></div>'
-    : buildGroupBlock('全印 合計', 'オッズ10倍以下', stLow);
-
+  renderOddsStats();
   renderCourseStats();
   renderGradeStats();
 
@@ -1300,6 +1305,74 @@ function renderDateStats() {
     <div class="oshi-stat-list">${rows || '<div style="padding:12px 14px;font-size:13px;color:var(--hint)">データなし</div>'}</div>`;
 }
 
+function renderOddsStats() {
+  const el = document.getElementById('odds-stat-list');
+  const range = (document.getElementById('stats-odds-filter')||{}).value || '';
+
+  if (!range) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">オッズ帯を選択すると印別回収率を表示します</div>';
+    return;
+  }
+
+  const RANGES = {
+    '1-5':   { label: '1〜5倍',   min: 1,  max: 5  },
+    '5-10':  { label: '5〜10倍',  min: 5,  max: 10 },
+    '10-20': { label: '10〜20倍', min: 10, max: 20 },
+    '20-50': { label: '20〜50倍', min: 20, max: 50 },
+    '50-':   { label: '50倍以上', min: 50, max: Infinity },
+  };
+  const { label, min, max } = RANGES[range];
+
+  const stO = calcSt(h => {
+    const o = parseFloat(h.odds);
+    return o > 0 && o >= min && o < max;
+  });
+
+  const totN = OSHI.reduce((a,o) => a+stO[o.s].n, 0);
+  if (totN === 0) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">このオッズ帯のデータなし</div>';
+    return;
+  }
+
+  const totPay  = OSHI.reduce((a,o) => a+stO[o.s].tanPay, 0);
+  const totFuku = OSHI.reduce((a,o) => a+stO[o.s].fukuPay, 0);
+  const totWin  = OSHI.reduce((a,o) => a+stO[o.s].win, 0);
+  const roi  = roiVal(totN, totPay);
+  const froi = roiVal(totN, totFuku);
+
+  const rows = OSHI.map(o => {
+    const s = stO[o.s]; if (s.n === 0) return '';
+    const r  = roiVal(s.n, s.tanPay);
+    const fr = roiVal(s.n, s.fukuPay);
+    const wr = s.n > 0 ? Math.round(s.win/s.n*100) : 0;
+    const hr = s.n > 0 ? Math.round(s.hit3/s.n*100) : 0;
+    return `<div class="oshi-stat-row">
+      <span class="oshi-chip ${o.cls}" style="width:28px;height:28px;font-size:14px">${o.s}</span>
+      <div class="oshi-stat-info">
+        <div class="oshi-stat-name">${o.l}</div>
+        <div class="oshi-stat-sub">${s.n}回　単勝${s.win}回(${wr}%)　複勝${s.hit3}回(${hr}%)</div>
+      </div>
+      <div style="text-align:right;display:flex;flex-direction:column;gap:2px">
+        <div><span class="roi-val ${roiColor(r)}" style="font-size:18px;font-weight:700">${r!==null?r+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">単勝</span></div>
+        <div><span class="roi-val ${roiColor(fr)}" style="font-size:18px;font-weight:700">${fr!==null?fr+'%':'—'}</span> <span style="font-size:10px;color:var(--hint)">複勝</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface2);border-radius:var(--radius-sm);margin-bottom:8px">
+      <div>
+        <div style="font-size:14px;font-weight:700">${label}</div>
+        <div style="font-size:12px;color:var(--hint);margin-top:2px">${totN}頭　単勝${totWin}回</div>
+      </div>
+      <div style="text-align:right;display:flex;gap:14px">
+        <div><div style="font-size:20px;font-weight:700" class="${roiColor(roi)}">${roi!==null?roi+'%':'—'}</div><div style="font-size:11px;color:var(--hint)">単勝回収率</div></div>
+        <div><div style="font-size:20px;font-weight:700" class="${roiColor(froi)}">${froi!==null?froi+'%':'—'}</div><div style="font-size:11px;color:var(--hint)">複勝回収率</div></div>
+      </div>
+    </div>
+    <div class="oshi-stat-list">${rows || '<div style="padding:12px 14px;font-size:13px;color:var(--hint)">データなし</div>'}</div>`;
+}
+
 function renderCourseStats() {
   const el = document.getElementById('course-stat-list');
   const course = (document.getElementById('stats-course-filter')||{}).value || '';
@@ -1496,4 +1569,5 @@ function renderUrenCombo() {
 </script>
 </body>
 </html>
+
 
