@@ -370,6 +370,9 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
     <div class="stat-section-title">馬連 ◎軸 流し 比較</div>
     <div id="uren-flow-list"></div>
 
+    <div class="stat-section-title">馬連 ◎オッズ帯別 流し比較</div>
+    <div id="uren-flow-odds-list"></div>
+
     <div class="stat-section-title">オッズ帯別 印別回収率</div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
       <select id="stats-odds-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" onchange="renderOddsStats()">
@@ -1090,6 +1093,7 @@ function renderStats() {
 
   renderOddsStats();
   renderCourseStats();
+  renderUrenFlowOdds();
   renderGradeStats();
 
   const flowPatterns = [
@@ -1370,6 +1374,71 @@ function renderDateStats() {
     <div class="oshi-stat-list">${rows || '<div style="padding:12px 14px;font-size:13px;color:var(--hint)">データなし</div>'}</div>`;
 }
 
+function renderUrenFlowOdds() {
+  const el = document.getElementById('uren-flow-odds-list');
+
+  const patterns = [
+    { label: '◎ → ○',       partners: ['○'] },
+    { label: '◎ → ○▲',     partners: ['○','▲'] },
+    { label: '◎ → ○▲△',   partners: ['○','▲','△'] },
+    { label: '◎ → ○▲△☆', partners: ['○','▲','△','☆'] },
+  ];
+
+  // ◎のオッズ条件でフィルタした calcUrenFlow
+  function calcFlow(partners, oddsFilter) {
+    let n = 0, hit = 0, pay = 0;
+    recs.forEach(r => {
+      const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
+      const hon = horses.find(h => h.oshi === '◎');
+      if (!hon) return;
+      // ◎のオッズ条件チェック
+      const honOdds = parseFloat(hon.odds) || 0;
+      if (!oddsFilter(honOdds)) return;
+      n++;
+      const r1 = horses.filter(h => parseInt(h.rank) === 1);
+      const r2 = horses.filter(h => parseInt(h.rank) === 2);
+      const honIn = r1.some(h => h.oshi === '◎') || r2.some(h => h.oshi === '◎');
+      const partIn = r1.some(h => partners.includes(h.oshi)) || r2.some(h => partners.includes(h.oshi));
+      if (honIn && partIn) { hit++; pay += parseFloat(r.uren) || 0; }
+    });
+    return { n, hit, pay };
+  }
+
+  const oddsGroups = [
+    { label: '◎ 10倍以下',  filter: o => o > 0 && o <= 10 },
+    { label: '◎ 10倍超',    filter: o => o > 10 },
+  ];
+
+  // パターンごとに2つのオッズ帯を並べた行を生成
+  function flowRow(p, group) {
+    const bet = p.partners.length;
+    const f = calcFlow(p.partners, group.filter);
+    const roi = f.n > 0 ? Math.round(f.pay / (f.n * bet * 100) * 100) : null;
+    const hitRate = f.n > 0 ? Math.round(f.hit / f.n * 100) : 0;
+    const rc = roiColor(roi);
+    return `<div style="flex:1;text-align:center;padding:10px 6px;border-left:0.5px solid var(--border)">
+      <div style="font-size:11px;color:var(--hint);margin-bottom:4px">${group.label}</div>
+      <div style="font-size:17px;font-weight:700" class="${rc}">${roi!==null?roi+'%':'—'}</div>
+      <div style="font-size:11px;color:var(--hint);margin-top:2px">${f.n}R　${hitRate}%的中</div>
+    </div>`;
+  }
+
+  const rows = patterns.map(p => {
+    const bet = p.partners.length;
+    return `<div style="border-bottom:0.5px solid var(--border)">
+      <div style="padding:10px 14px 6px;font-size:14px;font-weight:700">${p.label} <span style="font-size:11px;color:var(--hint);font-weight:400">${bet}点買い</span></div>
+      <div style="display:flex">
+        ${oddsGroups.map(g => flowRow(p, g)).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:14px">
+    <div style="background:var(--surface2);padding:8px 14px;font-size:12px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border)">◎のオッズ帯別に回収率を比較（オッズ未入力の◎は除外）</div>
+    ${rows || '<div style="padding:14px;font-size:13px;color:var(--hint)">データなし</div>'}
+  </div>`;
+}
+
 function renderOddsStats() {
   const el = document.getElementById('odds-stat-list');
   const range = (document.getElementById('stats-odds-filter')||{}).value || '';
@@ -1634,6 +1703,5 @@ function renderUrenCombo() {
 </script>
 </body>
 </html>
-
 
 
