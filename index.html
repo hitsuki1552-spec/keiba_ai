@@ -337,10 +337,25 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
       <button class="oshi-filter-btn" data-oshi="△" onclick="setOshiFilter('△',this)"><span class="oshi-chip oshi-ren" style="width:22px;height:22px;font-size:12px">△</span></button>
       <button class="oshi-filter-btn" data-oshi="☆" onclick="setOshiFilter('☆',this)"><span class="oshi-chip oshi-ana" style="width:22px;height:22px;font-size:12px">☆</span></button>
     </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+      <span style="font-size:12px;color:var(--muted);font-weight:500">着順：</span>
+      <button class="oshi-filter-btn active" id="rank-filter-1" onclick="setOshiRankFilter(1,this)">1着</button>
+      <button class="oshi-filter-btn" id="rank-filter-2" onclick="setOshiRankFilter(2,this)">2着</button>
+      <button class="oshi-filter-btn" id="rank-filter-3" onclick="setOshiRankFilter(3,this)">3着</button>
+    </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
       <span style="font-size:12px;color:var(--muted);font-weight:500">馬連：</span>
       <button class="oshi-filter-btn active" id="uren-filter-all" onclick="setUrenFilter(false,this)">全て</button>
       <button class="oshi-filter-btn" id="uren-filter-hit" onclick="setUrenFilter(true,this)">的中のみ</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <span style="font-size:12px;color:var(--muted);font-weight:500">オッズ帯：</span>
+      <button class="oshi-filter-btn active" id="odds-range-all" onclick="setOddsRangeFilter(null,this)">全て</button>
+      <button class="oshi-filter-btn" onclick="setOddsRangeFilter('1-5',this)">1〜5倍</button>
+      <button class="oshi-filter-btn" onclick="setOddsRangeFilter('5-10',this)">5〜10倍</button>
+      <button class="oshi-filter-btn" onclick="setOddsRangeFilter('10-20',this)">10〜20倍</button>
+      <button class="oshi-filter-btn" onclick="setOddsRangeFilter('20-50',this)">20〜50倍</button>
+      <button class="oshi-filter-btn" onclick="setOddsRangeFilter('50-',this)">50倍〜</button>
     </div>
     <div id="hist-list"></div>
   </div>
@@ -645,7 +660,17 @@ function showMsg(txt, type) {
 // ---- HISTORY ----
 let histSort = 'date';
 let histOshiFilter = null;
+let histOshiRank = 1;
 let histUrenFilter = false;
+let histOddsRange = null;
+
+const ODDS_RANGES = {
+  '1-5':   { min: 1,  max: 5,        label: '1〜5倍' },
+  '5-10':  { min: 5,  max: 10,       label: '5〜10倍' },
+  '10-20': { min: 10, max: 20,       label: '10〜20倍' },
+  '20-50': { min: 20, max: 50,       label: '20〜50倍' },
+  '50-':   { min: 50, max: Infinity, label: '50倍〜' },
+};
 
 function setSort(mode, btn) {
   histSort = mode;
@@ -657,6 +682,23 @@ function setSort(mode, btn) {
 function setOshiFilter(oshi, btn) {
   histOshiFilter = oshi;
   document.querySelectorAll('.oshi-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // 着順ボタンのアクティブ状態を復元
+  const rankBtn = document.getElementById('rank-filter-' + histOshiRank);
+  if (rankBtn) rankBtn.classList.add('active');
+  renderHistory();
+}
+
+function setOshiRankFilter(rank, btn) {
+  histOshiRank = rank;
+  document.querySelectorAll('#rank-filter-1,#rank-filter-2,#rank-filter-3').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderHistory();
+}
+
+function setOddsRangeFilter(range, btn) {
+  histOddsRange = range;
+  document.querySelectorAll('#odds-range-all, .oshi-filter-btn[onclick*="setOddsRangeFilter"]').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderHistory();
 }
@@ -699,15 +741,36 @@ function renderHistory() {
   if (filterDate)   filtered = filtered.filter(r => r.date === filterDate);
   if (filterCourse) filtered = filtered.filter(r => r.course === filterCourse);
 
-  // 印的中フィルター
+  // 印的中フィルター（指定印が指定着順）
   if (histOshiFilter) {
     filtered = filtered.filter(r =>
       (r.horses||[]).some(h =>
         h.oshi === histOshiFilter &&
         (h.rank||'').trim() !== '除外' &&
-        parseInt(h.rank) === 1
+        parseInt(h.rank) === histOshiRank
       )
     );
+  }
+
+  // オッズ帯フィルター
+  if (histOddsRange) {
+    const { min, max } = ODDS_RANGES[histOddsRange];
+    filtered = filtered.filter(r => {
+      const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
+      if (histOshiFilter) {
+        // 印指定あり：その印の馬のオッズが対象帯
+        return horses.some(h => {
+          const o = parseFloat(h.odds);
+          return h.oshi === histOshiFilter && o >= min && o < max;
+        });
+      } else {
+        // 印指定なし：レース内にそのオッズ帯の馬がいれば表示
+        return horses.some(h => {
+          const o = parseFloat(h.odds);
+          return o >= min && o < max;
+        });
+      }
+    });
   }
 
   // 馬連的中フィルター
@@ -720,8 +783,10 @@ function renderHistory() {
   }
 
   if (!filtered.length) {
+    const oddsLabel = histOddsRange ? ODDS_RANGES[histOddsRange].label : '';
     const msg = histUrenFilter ? '馬連が的中したレースはありません'
-      : histOshiFilter ? `${histOshiFilter}が1着的中したレースはありません`
+      : histOshiFilter ? `${histOshiFilter}が${histOshiRank}着${oddsLabel ? '（'+oddsLabel+'）' : ''}のレースはありません`
+      : histOddsRange ? `${oddsLabel}のレースはありません`
       : (filterDate || filterCourse) ? '該当するデータはありません'
       : 'まだデータがありません';
     el.innerHTML = `<div class="empty-state">${msg}</div>`;
@@ -1569,5 +1634,6 @@ function renderUrenCombo() {
 </script>
 </body>
 </html>
+
 
 
