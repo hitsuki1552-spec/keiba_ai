@@ -888,10 +888,14 @@ function renderHistory() {
     }).join('');
     const hasResult = (r.horses||[]).some(h => h.rank);
     const winHorse = (r.horses||[]).find(h => parseInt(h.rank)===1);
+    // 3連複的中判定
+    const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
+    const sanfukuHit = horses.some(h=>parseInt(h.rank)===1) && horses.some(h=>parseInt(h.rank)===2) && horses.some(h=>parseInt(h.rank)===3);
+    const sanfukuTxt = sanfukuHit && r.sanfuku && r.sanfuku !== 'undefined' && parseFloat(r.sanfuku) > 0 ? `　3連複: ${r.sanfuku}円` : '';
     const summaryTxt = hasResult
       ? (winHorse
-          ? `1着: ${winHorse.name}${winHorse.odds && winHorse.odds !== 'undefined' && parseFloat(winHorse.odds) > 0 ? '（'+winHorse.odds+'倍）' : ''}${r.uren && r.uren !== 'undefined' && parseFloat(r.uren) > 0 ? '　馬連: '+r.uren+'円' : ''}`
-          : `結果入力あり（1着なし）${r.uren && r.uren !== 'undefined' && parseFloat(r.uren) > 0 ? '　馬連: '+r.uren+'円' : ''}`)
+          ? `1着: ${winHorse.name}${winHorse.odds && winHorse.odds !== 'undefined' && parseFloat(winHorse.odds) > 0 ? '（'+winHorse.odds+'倍）' : ''}${r.uren && r.uren !== 'undefined' && parseFloat(r.uren) > 0 ? '　馬連: '+r.uren+'円' : ''}${sanfukuTxt}`
+          : `結果入力あり（1着なし）${r.uren && r.uren !== 'undefined' && parseFloat(r.uren) > 0 ? '　馬連: '+r.uren+'円' : ''}${sanfukuTxt}`)
       : null;
     return `<div class="hist-item">
       <div class="hist-head"><div>
