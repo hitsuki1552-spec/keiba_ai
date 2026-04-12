@@ -511,6 +511,7 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
   <!-- SANRENPUKU TAB -->
   <div id="tab-sanrenpuku" class="section">
     <div id="sanrenpuku-list"></div>
+    <div id="sanrenpuku-combo-list"></div>
   </div>
 
 </div>
@@ -1872,6 +1873,84 @@ function renderSanrenpuku() {
     <div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:14px">
       ${monthRows || '<div style="padding:14px;font-size:13px;color:var(--hint)">データなし</div>'}
     </div>`;
+
+  renderSanrenpukuCombo();
+}
+
+function renderSanrenpukuCombo() {
+  const el = document.getElementById('sanrenpuku-combo-list');
+
+  // 5印から3つを選ぶ全10組み合わせ C(5,3)=10
+  const combos = [];
+  for (let i = 0; i < OSHI.length; i++)
+    for (let j = i+1; j < OSHI.length; j++)
+      for (let k = j+1; k < OSHI.length; k++)
+        combos.push([OSHI[i], OSHI[j], OSHI[k]]);
+
+  const results = combos.map(([a, b, c]) => {
+    let n = 0, hit = 0, pay = 0;
+    recs.forEach(r => {
+      const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
+      // 3印全員いるか
+      if (!horses.some(h => h.oshi === a.s)) return;
+      if (!horses.some(h => h.oshi === b.s)) return;
+      if (!horses.some(h => h.oshi === c.s)) return;
+      n++;
+      // 1〜3着をa,b,cの3印が占めているか
+      const r1 = horses.filter(h => parseInt(h.rank) === 1);
+      const r2 = horses.filter(h => parseInt(h.rank) === 2);
+      const r3 = horses.filter(h => parseInt(h.rank) === 3);
+      const aIn = r1.some(h=>h.oshi===a.s)||r2.some(h=>h.oshi===a.s)||r3.some(h=>h.oshi===a.s);
+      const bIn = r1.some(h=>h.oshi===b.s)||r2.some(h=>h.oshi===b.s)||r3.some(h=>h.oshi===b.s);
+      const cIn = r1.some(h=>h.oshi===c.s)||r2.some(h=>h.oshi===c.s)||r3.some(h=>h.oshi===c.s);
+      if (aIn && bIn && cIn) { hit++; pay += parseFloat(r.sanfuku) || 0; }
+    });
+    const hitRate = n > 0 ? Math.round(hit / n * 100) : 0;
+    const roi     = n > 0 ? Math.round(pay / (n * 100) * 100) : null;
+    return { a, b, c, n, hit, hitRate, roi };
+  });
+
+  const byHit = [...results].sort((x,y) => y.hitRate - x.hitRate || (y.roi||0) - (x.roi||0));
+  const byRoi = [...results].sort((x,y) => (y.roi||0) - (x.roi||0));
+
+  function comboRow(co, rank) {
+    const rc = roiColor(co.roi);
+    const hitColor = co.hitRate >= 20 ? 'roi-good' : co.hitRate >= 10 ? 'roi-mid' : 'roi-bad';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:0.5px solid var(--border)">
+      <div style="font-size:13px;font-weight:500;color:var(--hint);min-width:20px;text-align:right">${rank}</div>
+      <span class="oshi-chip ${co.a.cls}" style="width:24px;height:24px;font-size:12px">${co.a.s}</span>
+      <span style="font-size:12px;color:var(--hint)">−</span>
+      <span class="oshi-chip ${co.b.cls}" style="width:24px;height:24px;font-size:12px">${co.b.s}</span>
+      <span style="font-size:12px;color:var(--hint)">−</span>
+      <span class="oshi-chip ${co.c.cls}" style="width:24px;height:24px;font-size:12px">${co.c.s}</span>
+      <div style="flex:1;font-size:12px;color:var(--hint)">${co.n}R　的中${co.hit}R</div>
+      <div style="display:flex;gap:12px;align-items:baseline">
+        <div style="text-align:center">
+          <div style="font-size:17px;font-weight:700" class="${hitColor}">${co.n>0?co.hitRate+'%':'—'}</div>
+          <div style="font-size:10px;color:var(--hint)">的中率</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:17px;font-weight:700" class="${rc}">${co.roi!==null?co.roi+'%':'—'}</div>
+          <div style="font-size:10px;color:var(--hint)">回収率</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  el.innerHTML = recs.length === 0
+    ? ''
+    : `
+    <div style="font-size:12px;color:var(--hint);margin-bottom:12px">◎〇▲△☆から3印を選んだ1点買いの的中率・回収率（3印全員いるレースのみ集計）</div>
+
+    <div class="stat-section-title">的中率ランキング</div>
+    <div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:16px">
+      ${byHit.map((c,i) => comboRow(c,i+1)).join('')}
+    </div>
+
+    <div class="stat-section-title">回収率ランキング</div>
+    <div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:16px">
+      ${byRoi.map((c,i) => comboRow(c,i+1)).join('')}
+    </div>`;
 }
 
 function renderUrenCombo() {
@@ -1954,3 +2033,4 @@ function renderUrenCombo() {
 </script>
 </body>
 </html>
+
