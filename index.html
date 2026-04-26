@@ -506,6 +506,31 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
   <!-- UREN COMBO TAB -->
   <div id="tab-urencombo" class="section">
     <div id="uren-combo-list"></div>
+
+    <div class="stat-section-title" style="margin-top:8px">競馬場別 馬連組み合わせランキング</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <select id="uren-combo-course" class="inp" style="flex:1;font-size:15px;padding:9px 12px" onchange="renderUrenComboCourse()">
+        <option value="">競馬場を選択</option>
+        <optgroup label="中央">
+          <option value="札幌">札幌</option>
+          <option value="函館">函館</option>
+          <option value="福島">福島</option>
+          <option value="新潟">新潟</option>
+          <option value="東京">東京</option>
+          <option value="中山">中山</option>
+          <option value="中京">中京</option>
+          <option value="京都">京都</option>
+          <option value="阪神">阪神</option>
+          <option value="小倉">小倉</option>
+        </optgroup>
+        <optgroup label="その他">
+          <option value="地方">地方</option>
+          <option value="海外">海外</option>
+        </optgroup>
+      </select>
+      <button class="sort-btn" onclick="document.getElementById('uren-combo-course').value='';renderUrenComboCourse()" style="white-space:nowrap;flex-shrink:0">クリア</button>
+    </div>
+    <div id="uren-combo-course-list"></div>
   </div>
 
   <!-- SANRENPUKU TAB -->
@@ -1953,82 +1978,84 @@ function renderSanrenpukuCombo() {
     </div>`;
 }
 
-function renderUrenCombo() {
-  const el = document.getElementById('uren-combo-list');
-
-  // 5印から2つを選ぶ全10組み合わせ
+// 馬連2印組み合わせを計算する共通関数
+function calcUrenCombos(targetRecs) {
   const combos = [];
-  for (let i = 0; i < OSHI.length; i++) {
-    for (let j = i + 1; j < OSHI.length; j++) {
+  for (let i = 0; i < OSHI.length; i++)
+    for (let j = i+1; j < OSHI.length; j++)
       combos.push([OSHI[i], OSHI[j]]);
-    }
-  }
 
-  const results = combos.map(([a, b]) => {
+  return combos.map(([a, b]) => {
     let n = 0, hit = 0, pay = 0;
-    recs.forEach(r => {
+    targetRecs.forEach(r => {
       const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
-      // aかbの印の馬が存在するレースのみカウント
-      const hasA = horses.some(h => h.oshi === a.s);
-      const hasB = horses.some(h => h.oshi === b.s);
-      if (!hasA || !hasB) return;
+      if (!horses.some(h=>h.oshi===a.s) || !horses.some(h=>h.oshi===b.s)) return;
       n++;
-      // 1着・2着がa印とb印の馬で占められていれば的中
-      const r1 = horses.filter(h => parseInt(h.rank) === 1);
-      const r2 = horses.filter(h => parseInt(h.rank) === 2);
-      const aIn = r1.some(h => h.oshi === a.s) || r2.some(h => h.oshi === a.s);
-      const bIn = r1.some(h => h.oshi === b.s) || r2.some(h => h.oshi === b.s);
-      if (aIn && bIn) {
-        hit++;
-        pay += parseFloat(r.uren) || 0;
-      }
+      const r1 = horses.filter(h=>parseInt(h.rank)===1);
+      const r2 = horses.filter(h=>parseInt(h.rank)===2);
+      const aIn = r1.some(h=>h.oshi===a.s)||r2.some(h=>h.oshi===a.s);
+      const bIn = r1.some(h=>h.oshi===b.s)||r2.some(h=>h.oshi===b.s);
+      if (aIn && bIn) { hit++; pay += parseFloat(r.uren)||0; }
     });
-    const hitRate = n > 0 ? Math.round(hit / n * 100) : 0;
-    const roi = n > 0 ? Math.round(pay / (n * 100) * 100) : null;
-    return { a, b, n, hit, hitRate, roi, pay };
+    const hitRate = n>0 ? Math.round(hit/n*100) : 0;
+    const roi = n>0 ? Math.round(pay/(n*100)*100) : null;
+    return { a, b, n, hit, hitRate, roi };
   });
+}
 
-  // 的中率順・回収率順の2種ソートで表示
-  const byHit = [...results].sort((x, y) => y.hitRate - x.hitRate || (y.roi||0) - (x.roi||0));
-  const byRoi = [...results].sort((x, y) => (y.roi||0) - (x.roi||0));
+function urenComboRow(c, rank) {
+  const rc = roiColor(c.roi);
+  const hitColor = c.hitRate>=30?'roi-good':c.hitRate>=15?'roi-mid':'roi-bad';
+  return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid var(--border)">
+    <div style="font-size:13px;font-weight:500;color:var(--hint);min-width:20px;text-align:right">${rank}</div>
+    <span class="oshi-chip ${c.a.cls}" style="width:26px;height:26px;font-size:13px">${c.a.s}</span>
+    <span style="font-size:13px;color:var(--hint)">−</span>
+    <span class="oshi-chip ${c.b.cls}" style="width:26px;height:26px;font-size:13px">${c.b.s}</span>
+    <div style="flex:1;font-size:12px;color:var(--hint)">${c.n}R　的中${c.hit}R</div>
+    <div style="display:flex;gap:14px;align-items:baseline">
+      <div style="text-align:center"><div style="font-size:18px;font-weight:700" class="${hitColor}">${c.n>0?c.hitRate+'%':'—'}</div><div style="font-size:10px;color:var(--hint)">的中率</div></div>
+      <div style="text-align:center"><div style="font-size:18px;font-weight:700" class="${rc}">${c.roi!==null?c.roi+'%':'—'}</div><div style="font-size:10px;color:var(--hint)">回収率</div></div>
+    </div>
+  </div>`;
+}
 
-  function comboRow(c, rank) {
-    const rc = roiColor(c.roi);
-    const hitColor = c.hitRate >= 30 ? 'roi-good' : c.hitRate >= 15 ? 'roi-mid' : 'roi-bad';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:0.5px solid var(--border)">
-      <div style="font-size:13px;font-weight:500;color:var(--hint);min-width:20px;text-align:right">${rank}</div>
-      <span class="oshi-chip ${c.a.cls}" style="width:26px;height:26px;font-size:13px">${c.a.s}</span>
-      <span style="font-size:13px;color:var(--hint)">−</span>
-      <span class="oshi-chip ${c.b.cls}" style="width:26px;height:26px;font-size:13px">${c.b.s}</span>
-      <div style="flex:1;font-size:12px;color:var(--hint)">${c.n}R　的中${c.hit}R</div>
-      <div style="display:flex;gap:14px;align-items:baseline">
-        <div style="text-align:center">
-          <div style="font-size:18px;font-weight:700" class="${hitColor}">${c.n>0?c.hitRate+'%':'—'}</div>
-          <div style="font-size:10px;color:var(--hint)">的中率</div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:18px;font-weight:700" class="${rc}">${c.roi!==null?c.roi+'%':'—'}</div>
-          <div style="font-size:10px;color:var(--hint)">回収率</div>
-        </div>
-      </div>
-    </div>`;
-  }
-
-  const totalRecs = recs.length;
-  el.innerHTML = totalRecs === 0
-    ? '<div class="empty-state">データがありません</div>'
-    : `
-    <div style="font-size:12px;color:var(--hint);margin-bottom:12px">◎〇▲△☆から2印を選んだ1点買いの的中率・回収率（両方の印がいるレースのみ集計）</div>
-
+function buildUrenComboHTML(results, label) {
+  const byHit = [...results].sort((x,y)=>y.hitRate-x.hitRate||(y.roi||0)-(x.roi||0));
+  const byRoi = [...results].sort((x,y)=>(y.roi||0)-(x.roi||0));
+  return `
+    <div style="font-size:12px;color:var(--hint);margin-bottom:12px">${label}</div>
     <div class="stat-section-title">的中率ランキング</div>
     <div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:16px">
-      ${byHit.map((c, i) => comboRow(c, i+1)).join('')}
+      ${byHit.map((c,i)=>urenComboRow(c,i+1)).join('')}
     </div>
-
     <div class="stat-section-title">回収率ランキング</div>
     <div style="background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:16px">
-      ${byRoi.map((c, i) => comboRow(c, i+1)).join('')}
+      ${byRoi.map((c,i)=>urenComboRow(c,i+1)).join('')}
     </div>`;
+}
+
+function renderUrenCombo() {
+  const el = document.getElementById('uren-combo-list');
+  if (!recs.length) { el.innerHTML = '<div class="empty-state">データがありません</div>'; return; }
+  const results = calcUrenCombos(recs);
+  el.innerHTML = buildUrenComboHTML(results, '◎〇▲△☆から2印を選んだ1点買いの的中率・回収率（両方の印がいるレースのみ集計）');
+  renderUrenComboCourse();
+}
+
+function renderUrenComboCourse() {
+  const el = document.getElementById('uren-combo-course-list');
+  const course = (document.getElementById('uren-combo-course')||{}).value || '';
+  if (!course) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">競馬場を選択するとその競馬場の組み合わせランキングを表示します</div>';
+    return;
+  }
+  const courseRecs = recs.filter(r => r.course === course);
+  if (!courseRecs.length) {
+    el.innerHTML = '<div style="font-size:13px;color:var(--hint);padding:4px 0">この競馬場のデータなし</div>';
+    return;
+  }
+  const results = calcUrenCombos(courseRecs);
+  el.innerHTML = buildUrenComboHTML(results, `${course}　${courseRecs.length}R（両方の印がいるレースのみ集計）`);
 }
 </script>
 </body>
