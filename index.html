@@ -928,6 +928,8 @@ function renderHistory() {
       }
       const oddsVal = h.odds && h.odds !== 'undefined' && parseFloat(h.odds) > 0;
       const pay = (rank === 1 && oddsVal) ? '+' + Math.round(parseFloat(h.odds)*100) + '円' : '';
+      const fukuVal = h.fuku && h.fuku !== 'undefined' && parseFloat(h.fuku) > 0;
+      const fukuPay = (rank >= 1 && rank <= 3 && fukuVal) ? '複勝+' + h.fuku + '円' : '';
       return `<div class="hist-horse">
         <span class="oshi-chip ${o.cls}">${h.oshi}</span>
         <span>${h.name}</span>
@@ -935,6 +937,7 @@ function renderHistory() {
         <span class="rank-txt" style="margin-left:auto"></span>
         ${chipClass ? `<span class="hit-chip ${chipClass}">${chipTxt}</span>` : ''}
         ${pay ? `<span style="font-size:12px;color:#c0392b;font-weight:700;margin-left:4px">${pay}</span>` : ''}
+        ${fukuPay ? `<span style="font-size:12px;color:#276749;font-weight:700;margin-left:4px">${fukuPay}</span>` : ''}
       </div>`;
     }).join('');
     const hasResult = (r.horses||[]).some(h => h.rank);
