@@ -310,7 +310,7 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
       <input type="date" id="hist-date-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" oninput="renderHistory()">
       <button class="sort-btn" onclick="document.getElementById('hist-date-filter').value='';document.getElementById('hist-course-filter').value='';renderHistory()" style="white-space:nowrap;flex-shrink:0">全表示</button>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
       <select id="hist-course-filter" class="inp" style="flex:1;font-size:15px;padding:9px 12px" onchange="renderHistory()">
         <option value="">競馬場を選択</option>
         <optgroup label="中央">
@@ -331,43 +331,67 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
         </optgroup>
       </select>
     </div>
-    <div id="race-grid" style="margin-bottom:12px"></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-      <span style="font-size:12px;color:var(--muted);font-weight:500">的中印：</span>
-      <button class="oshi-filter-btn active" onclick="setOshiFilter(null,this)">全て</button>
-      <button class="oshi-filter-btn" data-oshi="◎" onclick="setOshiFilter('◎',this)"><span class="oshi-chip oshi-hon" style="width:22px;height:22px;font-size:12px">◎</span></button>
-      <button class="oshi-filter-btn" data-oshi="○" onclick="setOshiFilter('○',this)"><span class="oshi-chip oshi-tai" style="width:22px;height:22px;font-size:12px">○</span></button>
-      <button class="oshi-filter-btn" data-oshi="▲" onclick="setOshiFilter('▲',this)"><span class="oshi-chip oshi-tan" style="width:22px;height:22px;font-size:12px">▲</span></button>
-      <button class="oshi-filter-btn" data-oshi="△" onclick="setOshiFilter('△',this)"><span class="oshi-chip oshi-ren" style="width:22px;height:22px;font-size:12px">△</span></button>
-      <button class="oshi-filter-btn" data-oshi="☆" onclick="setOshiFilter('☆',this)"><span class="oshi-chip oshi-ana" style="width:22px;height:22px;font-size:12px">☆</span></button>
+    <div id="race-grid" style="margin-bottom:8px"></div>
+
+    <!-- フィルターアコーディオン -->
+    <button id="filter-toggle-btn" onclick="toggleFilters(this)"
+      style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:8px;touch-action:manipulation">
+      <span>🔍 絞り込みフィルター</span>
+      <span id="filter-toggle-icon" style="font-size:11px">▼ 開く</span>
+    </button>
+    <div id="filter-panel" style="display:none;margin-bottom:8px">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;display:flex;flex-direction:column;gap:10px">
+
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:12px;color:var(--muted);font-weight:500;min-width:52px">的中印：</span>
+          <button class="oshi-filter-btn active" onclick="setOshiFilter(null,this)">全て</button>
+          <button class="oshi-filter-btn" data-oshi="◎" onclick="setOshiFilter('◎',this)"><span class="oshi-chip oshi-hon" style="width:22px;height:22px;font-size:12px">◎</span></button>
+          <button class="oshi-filter-btn" data-oshi="○" onclick="setOshiFilter('○',this)"><span class="oshi-chip oshi-tai" style="width:22px;height:22px;font-size:12px">○</span></button>
+          <button class="oshi-filter-btn" data-oshi="▲" onclick="setOshiFilter('▲',this)"><span class="oshi-chip oshi-tan" style="width:22px;height:22px;font-size:12px">▲</span></button>
+          <button class="oshi-filter-btn" data-oshi="△" onclick="setOshiFilter('△',this)"><span class="oshi-chip oshi-ren" style="width:22px;height:22px;font-size:12px">△</span></button>
+          <button class="oshi-filter-btn" data-oshi="☆" onclick="setOshiFilter('☆',this)"><span class="oshi-chip oshi-ana" style="width:22px;height:22px;font-size:12px">☆</span></button>
+        </div>
+
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:12px;color:var(--muted);font-weight:500;min-width:52px">着順：</span>
+          <button class="oshi-filter-btn" id="rank-filter-off" onclick="setOshiRankFilter(null,this)">OFF</button>
+          <button class="oshi-filter-btn active" id="rank-filter-1" onclick="setOshiRankFilter(1,this)">1着</button>
+          <button class="oshi-filter-btn" id="rank-filter-2" onclick="setOshiRankFilter(2,this)">2着</button>
+          <button class="oshi-filter-btn" id="rank-filter-3" onclick="setOshiRankFilter(3,this)">3着</button>
+          <button class="oshi-filter-btn" id="rank-filter-all" onclick="setOshiRankFilter('all',this)">1〜3着</button>
+        </div>
+
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:12px;color:var(--muted);font-weight:500;min-width:52px">馬連：</span>
+          <button class="oshi-filter-btn active" id="uren-filter-all" onclick="setUrenFilter(false,this)">全て</button>
+          <button class="oshi-filter-btn" id="uren-filter-hit" onclick="setUrenFilter(true,this)">的中のみ</button>
+          <span style="font-size:12px;color:var(--muted);font-weight:500;margin-left:8px">3連複：</span>
+          <button class="oshi-filter-btn active" id="sanfuku-filter-all" onclick="setSanfukuFilter(false,this)">全て</button>
+          <button class="oshi-filter-btn" id="sanfuku-filter-hit" onclick="setSanfukuFilter(true,this)">的中のみ</button>
+        </div>
+
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:12px;color:var(--muted);font-weight:500;min-width:52px">オッズ帯：</span>
+          <button class="oshi-filter-btn active" id="odds-range-all" onclick="setOddsRangeFilter(null,this)">全て</button>
+          <button class="oshi-filter-btn" onclick="setOddsRangeFilter('1-5',this)">1〜5倍</button>
+          <button class="oshi-filter-btn" onclick="setOddsRangeFilter('5-10',this)">5〜10倍</button>
+          <button class="oshi-filter-btn" onclick="setOddsRangeFilter('10-20',this)">10〜20倍</button>
+          <button class="oshi-filter-btn" onclick="setOddsRangeFilter('20-50',this)">20〜50倍</button>
+          <button class="oshi-filter-btn" onclick="setOddsRangeFilter('50-',this)">50倍〜</button>
+        </div>
+
+        <div style="display:flex;gap:6px;align-items:center">
+          <span style="font-size:12px;color:var(--muted);font-weight:500;min-width:52px">オッズ検索：</span>
+          <button class="oshi-filter-btn active" id="oshi-odds-search-toggle" onclick="toggleOshiOddsSearch(this)">OFF</button>
+        </div>
+        <div id="oshi-odds-search-panel" style="display:none;background:var(--surface);border-radius:var(--radius-sm);padding:10px 12px">
+          <div style="font-size:11px;color:var(--hint);margin-bottom:8px">各印のオッズ帯を指定（未選択は条件なし）</div>
+          <div style="display:flex;flex-direction:column;gap:6px" id="oshi-odds-rows"></div>
+        </div>
+
+      </div>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-      <span style="font-size:12px;color:var(--muted);font-weight:500">着順：</span>
-      <button class="oshi-filter-btn" id="rank-filter-off" onclick="setOshiRankFilter(null,this)">OFF</button>
-      <button class="oshi-filter-btn active" id="rank-filter-1" onclick="setOshiRankFilter(1,this)">1着</button>
-      <button class="oshi-filter-btn" id="rank-filter-2" onclick="setOshiRankFilter(2,this)">2着</button>
-      <button class="oshi-filter-btn" id="rank-filter-3" onclick="setOshiRankFilter(3,this)">3着</button>
-      <button class="oshi-filter-btn" id="rank-filter-all" onclick="setOshiRankFilter('all',this)">1〜3着</button>
-    </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-      <span style="font-size:12px;color:var(--muted);font-weight:500">馬連：</span>
-      <button class="oshi-filter-btn active" id="uren-filter-all" onclick="setUrenFilter(false,this)">全て</button>
-      <button class="oshi-filter-btn" id="uren-filter-hit" onclick="setUrenFilter(true,this)">的中のみ</button>
-    </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-      <span style="font-size:12px;color:var(--muted);font-weight:500">3連複：</span>
-      <button class="oshi-filter-btn active" id="sanfuku-filter-all" onclick="setSanfukuFilter(false,this)">全て</button>
-      <button class="oshi-filter-btn" id="sanfuku-filter-hit" onclick="setSanfukuFilter(true,this)">的中のみ</button>
-    </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-      <span style="font-size:12px;color:var(--muted);font-weight:500">オッズ帯：</span>
-      <button class="oshi-filter-btn active" id="odds-range-all" onclick="setOddsRangeFilter(null,this)">全て</button>
-      <button class="oshi-filter-btn" onclick="setOddsRangeFilter('1-5',this)">1〜5倍</button>
-      <button class="oshi-filter-btn" onclick="setOddsRangeFilter('5-10',this)">5〜10倍</button>
-      <button class="oshi-filter-btn" onclick="setOddsRangeFilter('10-20',this)">10〜20倍</button>
-      <button class="oshi-filter-btn" onclick="setOddsRangeFilter('20-50',this)">20〜50倍</button>
-      <button class="oshi-filter-btn" onclick="setOddsRangeFilter('50-',this)">50倍〜</button>
-    </div>
+
     <div id="hist-list"></div>
   </div>
 
@@ -762,6 +786,8 @@ let histOshiRank = 1;
 let histUrenFilter = false;
 let histSanfukuFilter = false;
 let histOddsRange = null;
+let histOshiOdds = {}; // { '◎': '1-5', '○': '10-20', ... }
+let histOshiOddsOn = false;
 
 const ODDS_RANGES = {
   '1-5':   { min: 1,  max: 5,        label: '1〜5倍' },
@@ -770,6 +796,16 @@ const ODDS_RANGES = {
   '20-50': { min: 20, max: 50,       label: '20〜50倍' },
   '50-':   { min: 50, max: Infinity, label: '50倍〜' },
 };
+
+function toggleFilters(btn) {
+  const panel = document.getElementById('filter-panel');
+  const icon  = document.getElementById('filter-toggle-icon');
+  const open  = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  icon.textContent = open ? '▲ 閉じる' : '▼ 開く';
+  btn.style.borderBottomLeftRadius  = open ? '0' : '';
+  btn.style.borderBottomRightRadius = open ? '0' : '';
+}
 
 function setSort(mode, btn) {
   histSort = mode;
@@ -800,6 +836,40 @@ function setSanfukuFilter(hit, btn) {
   histSanfukuFilter = hit;
   document.querySelectorAll('#sanfuku-filter-all, #sanfuku-filter-hit').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  renderHistory();
+}
+
+function toggleOshiOddsSearch(btn) {
+  histOshiOddsOn = !histOshiOddsOn;
+  btn.textContent = histOshiOddsOn ? 'ON' : 'OFF';
+  btn.classList.toggle('active', !histOshiOddsOn);
+  const panel = document.getElementById('oshi-odds-search-panel');
+  panel.style.display = histOshiOddsOn ? 'block' : 'none';
+  if (histOshiOddsOn) buildOshiOddsRows();
+  else { histOshiOdds = {}; renderHistory(); }
+}
+
+function buildOshiOddsRows() {
+  const opts = `<option value="">指定なし</option>
+    <option value="1-5">1〜5倍</option>
+    <option value="5-10">5〜10倍</option>
+    <option value="10-20">10〜20倍</option>
+    <option value="20-50">20〜50倍</option>
+    <option value="50-">50倍〜</option>`;
+  document.getElementById('oshi-odds-rows').innerHTML = OSHI.map(o =>
+    `<div style="display:flex;align-items:center;gap:8px">
+      <span class="oshi-chip ${o.cls}" style="width:24px;height:24px;font-size:12px;flex-shrink:0">${o.s}</span>
+      <span style="font-size:13px;min-width:48px">${o.l}</span>
+      <select class="inp" style="flex:1;font-size:14px;padding:6px 10px" onchange="setOshiOdds('${o.s}',this.value)">
+        ${opts}
+      </select>
+    </div>`
+  ).join('');
+}
+
+function setOshiOdds(oshi, range) {
+  if (range) histOshiOdds[oshi] = range;
+  else delete histOshiOdds[oshi];
   renderHistory();
 }
 
@@ -879,6 +949,20 @@ function renderHistory() {
           return o >= min && o < max;
         });
       }
+    });
+  }
+
+  // 印別オッズ検索モード
+  if (histOshiOddsOn && Object.keys(histOshiOdds).length > 0) {
+    filtered = filtered.filter(r => {
+      const horses = (r.horses||[]).filter(h => (h.rank||'').trim() !== '除外');
+      return Object.entries(histOshiOdds).every(([oshi, range]) => {
+        const { min, max } = ODDS_RANGES[range];
+        return horses.some(h => {
+          const o = parseFloat(h.odds);
+          return h.oshi === oshi && o >= min && o < max;
+        });
+      });
     });
   }
 
